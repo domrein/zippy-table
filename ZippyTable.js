@@ -311,19 +311,20 @@ export default class ZippyTable extends HTMLElement {
     this._columnHeaders = val;
     this.setAttribute("columnHeaders", this._columnHeaders.join(","));
     this.headersElem.style.gridTemplateColumns = this._columnHeaders.map(h => `${100 / this._columnHeaders.length}%`).join(" ");
-    this._columnHeaders.forEach(h => {
+    this._columnHeaders.forEach((h, i) => {
       const elem = document.createElement("div");
       elem.textContent = `${h}`;
       // update column sort on click + (ascending) - desceding, removed
       elem.addEventListener("click", () => {
-        const ascIndex = this._sortBys.indexOf(`${h}+`);
-        const descIndex = this._sortBys.indexOf(`${h}-`);
+        const prop = this._columnProps[i];
+        const ascIndex = this._sortBys.indexOf(`${prop}+`);
+        const descIndex = this._sortBys.indexOf(`${prop}-`);
         if (ascIndex === -1 && descIndex === -1) {
-          this._sortBys.push(`${h}+`);
+          this._sortBys.push(`${prop}+`);
           elem.textContent = `↑${h}`;
         }
         else if (ascIndex !== -1) {
-          this._sortBys[ascIndex] = `${h}-`;
+          this._sortBys[ascIndex] = `${prop}-`;
           elem.textContent = `↓${h}`;
         }
         else if (descIndex !== -1) {
