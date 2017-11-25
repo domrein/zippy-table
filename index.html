@@ -1,0 +1,80 @@
+<html>
+  <head>
+    <style>
+      body {
+        margin: 0;
+      }
+
+      #table {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+    <script type="module" src="testData.js"></script>
+    <script type="module" src="ZippyTable.js"></script>
+  </head>
+  <body>
+    <zippy-table id="table"></zippy-table>
+    <script type="module">
+      import * as testData from "./testData.js";
+      import ZippyTable from "./ZippyTable.js";
+
+      ZippyTable.addRenderer("checkbox", class {
+        constructor(data, prop) {
+          this.items = data;
+          this.prop = prop;
+        }
+        create() {
+          const elem = document.createElement("input");
+          elem.type = "checkbox";
+          return elem;
+        }
+        render(elem) {
+          elem.checked = !!this.items[this.prop];
+        }
+      });
+
+      ZippyTable.addRenderer("dateTime", class {
+        constructor(data, prop) {
+          this.items = data;
+          this.prop = prop;
+          this.dateTime = new Date(data[prop]).toLocaleString("en-US", {timeZone: "America/Denver", hour12: false}).replace(",", "");
+        }
+        create() {
+          return document.createElement("div");
+        }
+        render(elem) {
+          elem.textContent = this.dateTime;
+        }
+      });
+
+      ZippyTable.addRenderer("goldCost", class {
+        constructor(data, prop) {
+          this.items = data;
+          this.prop = prop;
+          this.cost = `${Number(data[prop]).toLocaleString("en-US")} GP`;
+        }
+        create() {
+          return document.createElement("div");
+        }
+        render(elem) {
+          elem.textContent = this.cost;
+        }
+      });
+
+      const table = document.getElementById("table");
+      table.columnHeaders = testData.headers;
+      table.columnProps = testData.props;
+      table.columnRenderers = testData.renderers;
+      // const tableData = [];
+      // for (let i = 0; i < 100; i++) {
+      //   tableData.push(...JSON.parse(JSON.stringify(testData.items)));
+      // }
+      table.items = testData.items;
+      // test abandon prebuild
+      // setTimeout(() => {
+      //   table.items = [];
+      // }, 1000);
+    </script>
+  </body>
+</html>
