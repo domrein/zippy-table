@@ -82,6 +82,7 @@ const renderers = {
 // pagination
 // allow renderers to update data
 // async renderers
+// fix headers offset (scrollbar is taking up space in body)
 export default class ZippyTable extends HTMLElement {
   static get template() {
     return template;
