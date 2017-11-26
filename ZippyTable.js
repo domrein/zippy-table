@@ -77,7 +77,7 @@ const renderers = {
 // selection
 // X renderer registration
 // column resizing
-// vertical resizing
+// X vertical resizing
 // X create renderers in idle time
 // pagination
 // allow renderers to update data
@@ -110,7 +110,24 @@ export default class ZippyTable extends HTMLElement {
     this.attachShadow({mode: "open"}).appendChild(this.constructor.template.content.cloneNode(true));
 
     this.headersElem = this.shadowRoot.getElementById("headers");
+
     this.bodyElem = this.shadowRoot.getElementById("body");
+    let height = this.bodyElem.clientHeight;
+    const resize = () => {
+      // TODO: replace this with ResizeObserver when available
+      // if resized
+      if (this.bodyElem.clientHeight !== height) {
+        height = this.bodyElem.clientHeight;
+        this.moveRows(false);
+        while (this.calcRowsNeeded() > this.rows.length) {
+          const maxIndex = this.rows.reduce((a, b) => Math.max(a, b.dataIndex), 0);
+          this.buildRow(maxIndex + 1);
+        }
+      }
+      requestAnimationFrame(resize);
+    };
+    requestAnimationFrame(resize);
+
     this.rowsElem = this.shadowRoot.getElementById("rows");
 
     // tracks dom elem and metadata for displayed rows
@@ -130,28 +147,33 @@ export default class ZippyTable extends HTMLElement {
         const scrollTop = this.bodyElem.scrollTop;
         const scrolledUp = scrollTop - lastScrollPos <= 0;
         lastScrollPos = scrollTop;
-        this.rows.forEach(r => {
-          // row is off top
-          let recycled = false;
-          while (!scrolledUp && (r.offset + rowHeight < scrollTop)
-            && (r.offset + this.rows.length * rowHeight + rowHeight <= this.rowsElem.clientHeight)
-          ) {
-            r.offset += this.rows.length * rowHeight;
-            r.dataIndex += this.rows.length;
-            recycled = true;
-          }
-          while (scrolledUp && r.offset > scrollTop + this.bodyElem.clientHeight) {
-            r.offset -= this.rows.length * rowHeight;
-            r.dataIndex -= this.rows.length;
-            recycled = true;
-          }
-          // repopulate if item moved and it's at a valid index
-          if (recycled) {
-            r.elem.style.transform = `translateY(${r.offset}px)`;
-            this.populateRow(r);
-          }
-        });
+        this.moveRows(scrolledUp);
       });
+    });
+  }
+
+  moveRows(up) {
+    const scrollTop = this.bodyElem.scrollTop;
+    this.rows.forEach(r => {
+      // row is off top
+      let recycled = false;
+      while (!up && (r.offset + rowHeight < scrollTop)
+        && (r.offset + this.rows.length * rowHeight + rowHeight <= this.rowsElem.clientHeight)
+      ) {
+        r.offset += this.rows.length * rowHeight;
+        r.dataIndex += this.rows.length;
+        recycled = true;
+      }
+      while (up && r.offset > scrollTop + this.bodyElem.clientHeight) {
+        r.offset -= this.rows.length * rowHeight;
+        r.dataIndex -= this.rows.length;
+        recycled = true;
+      }
+      // repopulate if item moved and it's at a valid index
+      if (recycled) {
+        r.elem.style.transform = `translateY(${r.offset}px)`;
+        this.populateRow(r);
+      }
     });
   }
 
@@ -184,10 +206,7 @@ export default class ZippyTable extends HTMLElement {
   connectedCallback() {
   }
 
-  buildRows() {
-    this.rowsElem.innerHTML = "";
-    this.rows = [];
-    // TODO: generate rows on resize
+  calcRowsNeeded() {
     // find size and generate rows
     let numRows = Math.ceil(this.bodyElem.clientHeight / rowHeight) + bufferRows;
     if (numRows % 2) {
@@ -195,32 +214,44 @@ export default class ZippyTable extends HTMLElement {
     }
     // if we don't need to recycle rows, just display the number present
     let displayedRows = Math.ceil(this.bodyElem.clientHeight / rowHeight);
-    if (displayedRows >= this.items.length) {
+    if (displayedRows >= this.items.length || numRows >= this.items.length) {
       numRows = this.items.length;
     }
+
+    return numRows;
+  }
+
+  buildRows() {
+    this.rowsElem.innerHTML = "";
+    this.rows = [];
+    const numRows = this.calcRowsNeeded();
     for (let i = 0; i < numRows; i++) {
-      const offset = i * rowHeight;
-      const row = document.createElement("div");
-      row.style.backgroundColor = i % 2 ? "#333" : "#444";
-      row.style.height = `${rowHeight}px`;
-      row.style.transform = `translateY(${offset}px)`;
-      row.style.gridArea = "grid";
-      row.style.display = "grid";
-      row.style.gridTemplateRows = "1fr";
-      row.style.gridTemplateColumns = this._columnHeaders.map(h => `${100 / this._columnHeaders.length}%`).join(" ");
-      row.style.alignItems = "center";
-      row.style.willChange = "transform"; // this improves performance _a lot_
-      row.style.contain = "strict"; // this improves performance _a lot_ with innerHTML
-      row.innerHTML = this._columnHeaders.map(h => "<div></div>").join("");
-      this.rowsElem.appendChild(row);
-      const rowData = {
-        offset,
-        elem: row,
-        dataIndex: i,
-      };
-      this.rows.push(rowData);
-      this.populateRow(rowData, {createElement: true});
+      this.buildRow(i);
     }
+  }
+
+  buildRow(index) {
+    const offset = index * rowHeight;
+    const row = document.createElement("div");
+    row.style.backgroundColor = index % 2 ? "#333" : "#444";
+    row.style.height = `${rowHeight}px`;
+    row.style.transform = `translateY(${offset}px)`;
+    row.style.gridArea = "grid";
+    row.style.display = "grid";
+    row.style.gridTemplateRows = "1fr";
+    row.style.gridTemplateColumns = this._columnHeaders.map(h => `${100 / this._columnHeaders.length}%`).join(" ");
+    row.style.alignItems = "center";
+    row.style.willChange = "transform"; // this improves performance _a lot_
+    row.style.contain = "strict"; // this improves performance _a lot_ with innerHTML
+    row.innerHTML = this._columnHeaders.map(h => "<div></div>").join("");
+    this.rowsElem.appendChild(row);
+    const rowData = {
+      offset,
+      elem: row,
+      dataIndex: index,
+    };
+    this.rows.push(rowData);
+    this.populateRow(rowData, {createElement: true});
   }
 
   // call when data has been manipulated (repopulate all rows)
@@ -251,15 +282,18 @@ export default class ZippyTable extends HTMLElement {
     if (!meta) {
       meta = this._itemsMeta.get(item);
     }
+    // if renderers need to be built
     if (!meta.renderers) {
       meta.renderers = this._columnRenderers.map((r, i) => {
         // build renderer
         const renderer = new renderers[r](item, this._columnProps[i]);
-        // add dom elements
-        if (elem) {
-          elem.children[i].appendChild(renderer.create());
-        }
         return renderer;
+      });
+    }
+    // build dom elements
+    if (elem) {
+      meta.renderers.forEach((r, i) => {
+        elem.children[i].appendChild(r.create());
       });
     }
   }

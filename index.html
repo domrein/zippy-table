@@ -66,11 +66,12 @@
       table.columnHeaders = testData.headers;
       table.columnProps = testData.props;
       table.columnRenderers = testData.renderers;
-      // const tableData = [];
-      // for (let i = 0; i < 100; i++) {
-      //   tableData.push(...JSON.parse(JSON.stringify(testData.items)));
-      // }
-      table.items = testData.items;
+      const tableData = [];
+      for (let i = 0; i < 100; i++) {
+        tableData.push(...JSON.parse(JSON.stringify(testData.items)));
+      }
+      table.items = tableData;
+      // table.items = testData.items;
       // test abandon prebuild
       // setTimeout(() => {
       //   table.items = [];
