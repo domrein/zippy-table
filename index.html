@@ -25,7 +25,6 @@
         constructor(data, prop, updated) {
           this.data = data;
           this.prop = prop;
-          this.eventListenerAttached = false;
           this.onChange = event => {
             this.data[prop] = event.target.checked;
             updated();
@@ -39,11 +38,9 @@
         render(elem) {
           elem.checked = !!this.data[this.prop];
           elem.addEventListener("change", this.onChange);
-          this.eventListenerAttached = true;
         }
         recycle(elem) {
           elem.removeEventListener("change", this.onChange);
-          this.eventListenerAttached = false;
         }
       });
 
