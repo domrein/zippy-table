@@ -52,7 +52,9 @@ template.innerHTML = `
 `;
 
 const rowHeight = 32;
-const bufferRows = 1;
+// HACK: bufferRows is ideally 1, but osx "scroll" event with magic mouse
+//       doesn't dispatch the same as track pad/mouse wheel/scrollbar
+const bufferRows = 50;
 
 const renderers = {
   text: class {
@@ -72,8 +74,8 @@ const renderers = {
 
 // TODO:
 // X fix headers offset (scrollbar is taking up space in body)
-// BUG: gap appears in columns on osx with retina
-//   get difference between header and rows width to find scrollbar width
+// X  get difference between header and rows width to find scrollbar width
+// X BUG: gap appears in columns when scrolling on osx with retina and magic mouse - HACKED this :(
 // intelligent initial column sizes
 // filtering
 // selection
@@ -142,7 +144,7 @@ export default class ZippyTable extends HTMLElement {
 
     let requested = false;
     let lastScrollPos = 0;
-    this.bodyElem.addEventListener("scroll", event => {
+    const scroll = event => {
       if (requested) {
         return;
       }
@@ -152,11 +154,14 @@ export default class ZippyTable extends HTMLElement {
       requestAnimationFrame(() => {
         requested = false;
         const scrollTop = this.bodyElem.scrollTop;
-        const scrolledUp = scrollTop - lastScrollPos <= 0;
+        const scrolledUp = event.deltaY ? event.deltaY < 0 : scrollTop - lastScrollPos < 0;
+        // const scrolledUp = event.deltaY < 0;
         lastScrollPos = scrollTop;
         this.moveRows(scrolledUp);
       });
-    });
+    };
+    this.bodyElem.addEventListener("wheel", scroll);
+    this.bodyElem.addEventListener("scroll", scroll);
   }
 
   moveRows(up) {
