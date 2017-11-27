@@ -83,6 +83,8 @@ const renderers = {
 // X allow renderers to update data
 // async renderers
 // fix headers offset (scrollbar is taking up space in body)
+// intelligent initial column sizes
+// sticky columns
 export default class ZippyTable extends HTMLElement {
   static get template() {
     return template;
