@@ -19,10 +19,17 @@
       import * as testData from "./testData.js";
       import ZippyTable from "./ZippyTable.js";
 
+      // checkbox renderer
+      // recycles dom elements and can update underlying data
       ZippyTable.addRenderer("checkbox", class {
-        constructor(data, prop) {
-          this.items = data;
+        constructor(data, prop, updated) {
+          this.data = data;
           this.prop = prop;
+          this.eventListenerAttached = false;
+          this.onChange = event => {
+            this.data[prop] = event.target.checked;
+            updated();
+          };
         }
         create() {
           const elem = document.createElement("input");
@@ -30,13 +37,21 @@
           return elem;
         }
         render(elem) {
-          elem.checked = !!this.items[this.prop];
+          elem.checked = !!this.data[this.prop];
+          elem.addEventListener("change", this.onChange);
+          this.eventListenerAttached = true;
+        }
+        recycle(elem) {
+          elem.removeEventListener("change", this.onChange);
+          this.eventListenerAttached = false;
         }
       });
 
+      // dateTime renderer
+      // heavy on cpu so calculations are saved off in this.dateTime
       ZippyTable.addRenderer("dateTime", class {
         constructor(data, prop) {
-          this.items = data;
+          this.data = data;
           this.prop = prop;
           this.dateTime = new Date(data[prop]).toLocaleString("en-US", {timeZone: "America/Denver", hour12: false}).replace(",", "");
         }
@@ -48,9 +63,11 @@
         }
       });
 
+      // goldCost renderer
+      // simple formatting renderer (also caches formatted text)
       ZippyTable.addRenderer("goldCost", class {
         constructor(data, prop) {
-          this.items = data;
+          this.data = data;
           this.prop = prop;
           this.cost = `${Number(data[prop]).toLocaleString("en-US")} GP`;
         }
@@ -71,6 +88,9 @@
         tableData.push(...JSON.parse(JSON.stringify(testData.items)));
       }
       table.items = tableData;
+      table.addEventListener("itemUpdated", event => {
+        console.log(`${event.detail.item.name} updated!`);
+      });
       // table.items = testData.items;
       // test abandon prebuild
       // setTimeout(() => {

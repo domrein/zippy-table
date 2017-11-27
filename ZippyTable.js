@@ -56,7 +56,7 @@ const bufferRows = 1;
 const renderers = {
   text: class {
     constructor(data, prop) {
-      this.items = data;
+      this.data = data;
       this.prop = prop;
     }
     create() {
@@ -64,7 +64,7 @@ const renderers = {
     }
     render(elem) {
       // textContent is much faster than innerHTML/innerText
-      elem.textContent = this.items[this.prop];
+      elem.textContent = this.data[this.prop];
     }
   },
 };
@@ -80,7 +80,7 @@ const renderers = {
 // X vertical resizing
 // X create renderers in idle time
 // pagination
-// allow renderers to update data
+// X allow renderers to update data
 // async renderers
 // fix headers offset (scrollbar is taking up space in body)
 export default class ZippyTable extends HTMLElement {
@@ -158,6 +158,7 @@ export default class ZippyTable extends HTMLElement {
     this.rows.forEach(r => {
       // row is off top
       let recycled = false;
+      const dataIndex = r.dataIndex;
       while (!up && (r.offset + rowHeight < scrollTop)
         && (r.offset + this.rows.length * rowHeight + rowHeight <= this.rowsElem.clientHeight)
       ) {
@@ -170,8 +171,18 @@ export default class ZippyTable extends HTMLElement {
         r.dataIndex -= this.rows.length;
         recycled = true;
       }
-      // repopulate if item moved and it's at a valid index
+      // recycle/repopulate if item moved and it's at a valid index
       if (recycled) {
+        if (dataIndex >= 0 && dataIndex < this._items.length) {
+          const meta = this._itemsMeta.get(this._items[dataIndex]);
+          meta.renderers.forEach((renderer, i) => {
+            if (renderer.recycle) {
+              const elem = r.elem.children[i].firstChild;
+              renderer.recycle(elem);
+            }
+          });
+        }
+
         r.elem.style.transform = `translateY(${r.offset}px)`;
         this.populateRow(r);
       }
@@ -270,10 +281,9 @@ export default class ZippyTable extends HTMLElement {
     const meta = this._itemsMeta.get(data);
     this.buildRenderers(data, {meta, elem: createElement ? rowData.elem : null});
     // run renderers
-    this._columnRenderers.forEach((r, i) => {
-      const renderer = meta.renderers[i];
+    meta.renderers.forEach((r, i) => {
       const elem = rowData.elem.children[i].firstChild;
-      renderer.render(elem);
+      r.render(elem);
     });
   }
 
@@ -287,7 +297,7 @@ export default class ZippyTable extends HTMLElement {
     if (!meta.renderers) {
       meta.renderers = this._columnRenderers.map((r, i) => {
         // build renderer
-        const renderer = new renderers[r](item, this._columnProps[i]);
+        const renderer = new renderers[r](item, this._columnProps[i], () => this.itemUpdated(item));
         return renderer;
       });
     }
@@ -297,6 +307,10 @@ export default class ZippyTable extends HTMLElement {
         elem.children[i].appendChild(r.create());
       });
     }
+  }
+
+  itemUpdated(item) {
+    this.dispatchEvent(new CustomEvent("itemUpdated", {detail: {item}}));
   }
 
   sort() {
