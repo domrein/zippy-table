@@ -8,6 +8,7 @@ template.innerHTML = `
       grid-gap: 2px;
       color: #DDD;
       font-family: monospace;
+      --scrollbar-width: 0px;
     }
 
     #headers {
@@ -69,22 +70,25 @@ const renderers = {
   },
 };
 
-
 // TODO:
-// X items less than display length
-// X sorting
+// X fix headers offset (scrollbar is taking up space in body)
+// BUG: gap appears in columns on osx with retina
+//   get difference between header and rows width to find scrollbar width
+// intelligent initial column sizes
 // filtering
 // selection
-// X renderer registration
+// sticky columns
 // column resizing
+// dynamic columns (being able to dynamically add/remove columns)
+//   Make sure selection, scroll position etc are preserved
+// X items less than display length
+// X sorting
+// X renderer registration
 // X vertical resizing
 // X create renderers in idle time
 // pagination
 // X allow renderers to update data
 // async renderers
-// fix headers offset (scrollbar is taking up space in body)
-// intelligent initial column sizes
-// sticky columns
 export default class ZippyTable extends HTMLElement {
   static get template() {
     return template;
@@ -242,6 +246,7 @@ export default class ZippyTable extends HTMLElement {
     for (let i = 0; i < numRows; i++) {
       this.buildRow(i);
     }
+    this.shadowRoot.host.style.setProperty("--scrollbar-width", `${this.headersElem.clientWidth - this.rowsElem.clientWidth}px`);
   }
 
   buildRow(index) {
@@ -361,7 +366,7 @@ export default class ZippyTable extends HTMLElement {
   set columnHeaders(val) {
     this._columnHeaders = val;
     this.setAttribute("columnHeaders", this._columnHeaders.join(","));
-    this.headersElem.style.gridTemplateColumns = this._columnHeaders.map(h => `${100 / this._columnHeaders.length}%`).join(" ");
+    this.headersElem.style.gridTemplateColumns = this._columnHeaders.map(h => `calc((100% - var(--scrollbar-width)) / ${this._columnHeaders.length})`).join(" ");
     this._columnHeaders.forEach((h, i) => {
       const elem = document.createElement("div");
       elem.textContent = `${h}`;
