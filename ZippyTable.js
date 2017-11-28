@@ -53,6 +53,7 @@ template.innerHTML = `
   </div>
 `;
 
+const minColumnSize = 45;
 const rowHeight = 32;
 const bufferRows = 1;
 
@@ -74,13 +75,8 @@ const renderers = {
 
 // TODO:
 // X fix headers offset (scrollbar is taking up space in body)
-// X  get difference between header and rows width to find scrollbar width
 // X BUG: gap appears in columns when scrolling on osx with retina and magic mouse
-// intelligent initial column sizes
-//   min size is column header
-//   typical item?
-//   sample first item?
-//   sample random items?
+// X intelligent initial column sizes
 // filtering
 // selection
 // sticky columns
@@ -380,8 +376,8 @@ export default class ZippyTable extends HTMLElement {
 
   setColumnSize(column, size) {
     // minimum column size (px)
-    if (size < 20) {
-      size = 20;
+    if (size < minColumnSize) {
+      size = minColumnSize;
     }
 
     for (let i = 0; i < this._columnHeaders.length; i++) {
@@ -407,6 +403,7 @@ export default class ZippyTable extends HTMLElement {
       .map(h => this._columnSizes[h] ? this._columnSizes[h].size : 0)
       .reduce((a, b) => a + b, 0);
     // -10 to compensate for padding on headers/rows
+    // TODO: make padding size into var
     const availableSize = this.headersElem.clientWidth - 10;
     this._columnHeaders.forEach((h, i) => {
       // set explicit widths in pixels
@@ -581,6 +578,53 @@ export default class ZippyTable extends HTMLElement {
         requestIdleCallback(build);
       }
     }
+  }
+
+  // sizer is an item used to calculate column widths
+  get sizer() {
+    return this._sizer;
+  }
+
+  set sizer(val) {
+    this._sizer = val;
+
+    const meta = {
+      item: this._sizer,
+      renderers: null,
+      originalOrder: 0,
+    };
+    this._itemsMeta.set(this._sizer, meta);
+
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.innerHTML = this.columnHeaders.map(h => "<div></div>").join("");
+
+    // add a little padding by default
+    const children = [...row.children];
+    for (let i = 0; i < children.length - 2; i++) {
+      children[i].style.paddingRight = "10px";
+    }
+
+    this.buildRenderers(this._sizer, {elem: row});
+    this.bodyElem.appendChild(row);
+    meta.renderers.forEach((r, i) => {
+      const cell = row.children[i].firstChild;
+      r.render(cell);
+    });
+    const totalWidth = children.reduce((a, b) => a + b.clientWidth, 0);
+    this._columnHeaders.forEach((h, i) => {
+      const fixedSize = meta.renderers[i].constructor.fixedSize;
+      let size = fixedSize
+        ? row.children[i].clientWidth
+        : row.children[i].clientWidth / totalWidth * (this.headersElem.clientWidth - 10);
+      if (size < minColumnSize) {
+        size = minColumnSize;
+      }
+      const type = fixedSize ? "explicit" : "preferred";
+      this._columnSizes[h] = {size, type};
+    });
+    this.bodyElem.removeChild(row);
+    this.calcColumnSizes();
   }
 }
 

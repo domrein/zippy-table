@@ -21,7 +21,7 @@
 
       // checkbox renderer
       // recycles dom elements and can update underlying data
-      ZippyTable.addRenderer("checkbox", class {
+      const CheckboxRenderer = class {
         constructor(data, prop, updated) {
           this.data = data;
           this.prop = prop;
@@ -42,11 +42,13 @@
         recycle(elem) {
           elem.removeEventListener("change", this.onChange);
         }
-      });
+      };
+      CheckboxRenderer.fixedSize = true;
+      ZippyTable.addRenderer("checkbox", CheckboxRenderer);
 
       // dateTime renderer
       // heavy on cpu so calculations are saved off in this.dateTime
-      ZippyTable.addRenderer("dateTime", class {
+      const DateTimeRenderer = class {
         constructor(data, prop) {
           this.data = data;
           this.prop = prop;
@@ -58,7 +60,9 @@
         render(elem) {
           elem.textContent = this.dateTime;
         }
-      });
+      };
+      DateTimeRenderer.fixedSize = true;
+      ZippyTable.addRenderer("dateTime", DateTimeRenderer);
 
       // goldCost renderer
       // simple formatting renderer (also caches formatted text)
@@ -84,7 +88,17 @@
       for (let i = 0; i < 100; i++) {
         tableData.push(...JSON.parse(JSON.stringify(testData.items)));
       }
+      table.sizer = {
+        id: 9999,
+        name: "Baneful Hammer of Slaying",
+        created: 1511633603673,
+        cost: 999999,
+        rare: true,
+        description: "Make a constitution saving throw or you contract tetanus",
+      };
       table.items = tableData;
+      let count = 1;
+      table.items.forEach(i => i.id = count++);
       table.addEventListener("itemUpdated", event => {
         console.log(`${event.detail.item.name} updated!`);
       });
