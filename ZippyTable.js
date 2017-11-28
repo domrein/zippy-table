@@ -34,11 +34,13 @@ template.innerHTML = `
       grid-template: "grid";
     }
 
+    /* the rows  */
     #rows > div {
       padding-left: 5px;
       padding-right: 5px;
     }
 
+    /* the cell rows */
     /* changes performance profile, seems more overall gpu, but smoother */
     #rows > div > div {
       overflow: hidden;
@@ -75,10 +77,14 @@ const renderers = {
 // X  get difference between header and rows width to find scrollbar width
 // X BUG: gap appears in columns when scrolling on osx with retina and magic mouse
 // intelligent initial column sizes
+//   min size is column header
+//   typical item?
+//   sample first item?
+//   sample random items?
 // filtering
 // selection
 // sticky columns
-// column resizing
+// X column resizing
 // dynamic columns (being able to dynamically add/remove columns)
 //   Make sure selection, scroll position etc are preserved
 // X items less than display length
@@ -113,6 +119,7 @@ export default class ZippyTable extends HTMLElement {
     this._items = [];
     this._itemsMeta = new WeakMap(); // tracks data associated with items (ordering, renderers)
     this._sortBys = [];
+    this._columnSizes = {};
 
     this.attachShadow({mode: "open"}).appendChild(this.constructor.template.content.cloneNode(true));
 
@@ -270,7 +277,7 @@ export default class ZippyTable extends HTMLElement {
     row.style.gridArea = "grid";
     row.style.display = "grid";
     row.style.gridTemplateRows = "1fr";
-    row.style.gridTemplateColumns = this._columnHeaders.map(h => `${100 / this._columnHeaders.length}%`).join(" ");
+    row.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `var(--column-width-${i})`).join(" ");
     row.style.alignItems = "center";
     row.style.willChange = "transform"; // this improves performance _a lot_
     row.style.contain = "strict"; // this improves performance _a lot_ with innerHTML
@@ -371,6 +378,54 @@ export default class ZippyTable extends HTMLElement {
     this.refresh();
   }
 
+  setColumnSize(column, size) {
+    // minimum column size (px)
+    if (size < 20) {
+      size = 20;
+    }
+
+    for (let i = 0; i < this._columnHeaders.length; i++) {
+      const header = this._columnHeaders[i];
+      if (!this._columnSizes[header]) {
+        const elem = this.headersElem.children[i];
+        this._columnSizes[header] = {size: elem.clientWidth, type: "preferred"};
+      }
+      if (header === column) {
+        this._columnSizes[header].type = "explicit";
+        this._columnSizes[header].size = size;
+        break;
+      }
+    }
+
+    this.calcColumnSizes();
+  }
+
+  calcColumnSizes() {
+    const numExplicitSizes = this._columnHeaders.filter(h => this._columnSizes.hasOwnProperty(h)).length;
+    // add up all explicit widths
+    const explicitSizes = this._columnHeaders
+      .map(h => this._columnSizes[h] ? this._columnSizes[h].size : 0)
+      .reduce((a, b) => a + b, 0);
+    // -10 to compensate for padding on headers/rows
+    const availableSize = this.headersElem.clientWidth - 10;
+    this._columnHeaders.forEach((h, i) => {
+      // set explicit widths in pixels
+      if (this._columnSizes[h] && this._columnSizes[h].type === "explicit") {
+        this.shadowRoot.host.style.setProperty(`--column-width-${i}`, `${this._columnSizes[h].size}px`);
+      }
+      // set preferred widths in percentages calculated from pixels
+      else if (this._columnSizes[h] && this._columnSizes[h].type === "preferred") {
+        this.shadowRoot.host.style.setProperty(`--column-width-${i}`, `${this._columnSizes[h].size / availableSize * 100}%`);
+      }
+      // share available space by default
+      else {
+        const availableToMe = this.headersElem.clientWidth - explicitSizes;
+        const myShare = availableToMe / (this._columnHeaders.length - numExplicitSizes);
+        this.shadowRoot.host.style.setProperty(`--column-width-${i}`, `${myShare / availableSize * 100}%`);
+      }
+    });
+  }
+
   get columnHeaders() {
     return this._columnHeaders;
   }
@@ -378,32 +433,85 @@ export default class ZippyTable extends HTMLElement {
   set columnHeaders(val) {
     this._columnHeaders = val;
     this.setAttribute("columnHeaders", this._columnHeaders.join(","));
-    this.headersElem.style.gridTemplateColumns = this._columnHeaders.map(h => `calc((100% - var(--scrollbar-width)) / ${this._columnHeaders.length})`).join(" ");
+    this.headersElem.innerHTML = "";
+    this.headersElem.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `calc(var(--column-width-${i}) - var(--scrollbar-width))`).join(" ");
     this._columnHeaders.forEach((h, i) => {
       const elem = document.createElement("div");
-      elem.textContent = `${h}`;
+      elem.style.display = "flex";
+      elem.style.justifyContent = "space-between";
+      elem.style.alignItems = "center";
+
+      let resizing = false;
+
+      // add text (with sorting on click)
+      const text = document.createElement("div");
+      text.textContent = `${h}`;
+      elem.style.cursor = "n-resize";
       // update column sort on click + (ascending) - desceding, removed
       elem.addEventListener("click", () => {
+        if (resizing) {
+          return;
+        }
+
         const prop = this._columnProps[i];
         const ascIndex = this._sortBys.indexOf(`${prop}+`);
         const descIndex = this._sortBys.indexOf(`${prop}-`);
         if (ascIndex === -1 && descIndex === -1) {
           this._sortBys.push(`${prop}+`);
-          elem.textContent = `↑${h}`;
+          text.textContent = `↑${h}`;
+          text.style.cursor = "s-resize";
         }
         else if (ascIndex !== -1) {
           this._sortBys[ascIndex] = `${prop}-`;
-          elem.textContent = `↓${h}`;
+          text.textContent = `↓${h}`;
+          text.style.cursor = "auto";
         }
         else if (descIndex !== -1) {
           this._sortBys.splice(descIndex, 1);
-          elem.textContent = `${h}`;
+          text.textContent = `${h}`;
+          text.style.cursor = "n-resize";
         }
         this.sort();
       });
+      elem.appendChild(text);
+
+      // add resize handle
+      if (i !== this._columnHeaders.length - 1) {
+        const resizeHandle = document.createElement("div");
+        resizeHandle.style.cursor = "col-resize";
+        resizeHandle.style.width = "4px";
+        resizeHandle.style.backgroundColor = "#222";
+        resizeHandle.style.height = "100%";
+        resizeHandle.style.justifySelf = "flex-end";
+        resizeHandle.style.marginRight = "5px";
+        const onResize = event => {
+          event.preventDefault();
+          event.stopPropagation();
+          resizing = true;
+          let startX = event.pageX;
+          let startWidth = elem.clientWidth;
+
+          // follow mouse
+          const onMove = event => {
+            // console.log(event);
+            this.setColumnSize(h, startWidth + event.pageX - startX);
+          };
+          const onUp = event => {
+            setTimeout(() => resizing = false, 0);
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+          }
+          window.addEventListener("mousemove", onMove);
+          window.addEventListener("mouseup", onUp);
+        };
+        resizeHandle.addEventListener("mousedown", onResize);
+        elem.appendChild(resizeHandle);
+      }
+
       this.headersElem.appendChild(elem);
     });
     this.buildRows();
+    this.calcColumnSizes();
   }
 
   get columnProps() {

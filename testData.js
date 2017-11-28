@@ -34,4 +34,5 @@ export const items = [
   {id: 30, name: "Spacious Scabbard", created: 1511633603673, cost: 80, rare: false, description: "One size fits all!"},
   {id: 31, name: "Unwieldy Sabre", created: 1511633603673, cost: 60, rare: false, description: "It's surprisingly wieldy"},
   {id: 32, name: "Tasty Hardtack", created: 1511749533205, cost: 3, rare: false, description: "Just like mother used to make"},
+  {id: 33, name: "Zesty Sammich", created: 1511820924915, cost: 5, rare: false, description: "YOLO"},
 ];
