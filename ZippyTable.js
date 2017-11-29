@@ -97,7 +97,13 @@ export default class ZippyTable extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ["columnHeaders", "columnProps", "columnRenderers", "preload"];
+    return [
+      "columnHeaders",
+      "columnProps",
+      "columnRenderers",
+      "preload",
+      "disable-scroll-top-mod", // HACK/BUG: sometimes scrollTopMod is needed, other times it isn't
+    ];
   }
 
   static addRenderer(name, rendererClass) {
@@ -111,6 +117,7 @@ export default class ZippyTable extends HTMLElement {
     this._columnProps = [];
     this._columnRenderers = [];
     this._preload = true;
+    this._disableScrollTopMod = false;
 
     this._items = [];
     this._itemsMeta = new WeakMap(); // tracks data associated with items (ordering, renderers)
@@ -166,6 +173,9 @@ export default class ZippyTable extends HTMLElement {
   }
 
   moveRows(up, {scrollTopMod = 0} = {}) {
+    if (this._disableScrollTopMod) {
+      scrollTopMod = 0;
+    }
     // add mouse delta to scrollTop
     let scrollTop = this.bodyElem.scrollTop + scrollTopMod;
     // constrain scrollTop to bounds
@@ -231,6 +241,12 @@ export default class ZippyTable extends HTMLElement {
         newVal = `${newVal}`.toLowerCase() == "true";
         if (this._preload !== newVal) {
           this.preload = newVal;
+        }
+        break;
+      case "disable-scroll-top-mod":
+        newVal = `${newVal}`.toLowerCase() == "true";
+        if (this._disableScrollTopMod !== newVal) {
+          this.disableScrollTopMod = newVal;
         }
         break;
     }
@@ -536,6 +552,14 @@ export default class ZippyTable extends HTMLElement {
 
   set preload(val) {
     this._preload = val;
+  }
+
+  get disableScrollTopMod() {
+    return this._disableScrollTopMod;
+  }
+
+  set disableScrollTopMod(val) {
+    this._disableScrollTopMod = val;
   }
 
   // NOTE: it isn't safe to manipulate items manually outside of ZippyTable
