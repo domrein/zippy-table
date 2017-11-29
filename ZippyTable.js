@@ -54,7 +54,6 @@ template.innerHTML = `
 `;
 
 const minColumnSize = 45;
-const rowHeight = 32;
 const bufferRows = 1;
 
 const renderers = {
@@ -102,6 +101,7 @@ export default class ZippyTable extends HTMLElement {
       "columnProps",
       "columnRenderers",
       "preload",
+      "row-height",
       "disable-scroll-top-mod", // HACK/BUG: sometimes scrollTopMod is needed, other times it isn't
     ];
   }
@@ -117,6 +117,7 @@ export default class ZippyTable extends HTMLElement {
     this._columnProps = [];
     this._columnRenderers = [];
     this._preload = true;
+    this._rowHeight = 32;
     this._disableScrollTopMod = false;
 
     this._items = [];
@@ -182,23 +183,23 @@ export default class ZippyTable extends HTMLElement {
     if (scrollTop < 0) {
       scrollTop = 0;
     }
-    else if (scrollTop > this._items.length * rowHeight - this.bodyElem.clientHeight) {
-      scrollTop = this._items.length * rowHeight - this.bodyElem.clientHeight;
+    else if (scrollTop > this._items.length * this._rowHeight - this.bodyElem.clientHeight) {
+      scrollTop = this._items.length * this._rowHeight - this.bodyElem.clientHeight;
     }
 
     this.rows.forEach(r => {
       // row is off top
       let recycled = false;
       const dataIndex = r.dataIndex;
-      while (!up && (r.offset + rowHeight < scrollTop)
-        && (r.offset + this.rows.length * rowHeight + rowHeight <= this.rowsElem.clientHeight)
+      while (!up && (r.offset + this._rowHeight < scrollTop)
+        && (r.offset + this.rows.length * this._rowHeight + this._rowHeight <= this.rowsElem.clientHeight)
       ) {
-        r.offset += this.rows.length * rowHeight;
+        r.offset += this.rows.length * this._rowHeight;
         r.dataIndex += this.rows.length;
         recycled = true;
       }
       while (up && r.offset > scrollTop + this.bodyElem.clientHeight) {
-        r.offset -= this.rows.length * rowHeight;
+        r.offset -= this.rows.length * this._rowHeight;
         r.dataIndex -= this.rows.length;
         recycled = true;
       }
@@ -243,6 +244,12 @@ export default class ZippyTable extends HTMLElement {
           this.preload = newVal;
         }
         break;
+      case "row-height":
+        newVal = parseInt(newVal);
+        if (this._rowHeight !== newVal) {
+          this.rowHeight = newVal;
+        }
+        break;
       case "disable-scroll-top-mod":
         newVal = `${newVal}`.toLowerCase() == "true";
         if (this._disableScrollTopMod !== newVal) {
@@ -257,12 +264,12 @@ export default class ZippyTable extends HTMLElement {
 
   calcRowsNeeded() {
     // find size and generate rows
-    let numRows = Math.ceil(this.bodyElem.clientHeight / rowHeight) + bufferRows;
+    let numRows = Math.ceil(this.bodyElem.clientHeight / this._rowHeight) + bufferRows;
     if (numRows % 2) {
       numRows++;
     }
     // if we don't need to recycle rows, just display the number present
-    let displayedRows = Math.ceil(this.bodyElem.clientHeight / rowHeight);
+    const displayedRows = Math.ceil(this.bodyElem.clientHeight / this._rowHeight);
     if (displayedRows >= this.items.length || numRows >= this.items.length) {
       numRows = this.items.length;
     }
@@ -281,10 +288,10 @@ export default class ZippyTable extends HTMLElement {
   }
 
   buildRow(index) {
-    const offset = index * rowHeight;
+    const offset = index * this._rowHeight;
     const row = document.createElement("div");
     row.style.backgroundColor = index % 2 ? "#333" : "#444";
-    row.style.height = `${rowHeight}px`;
+    row.style.height = `${this._rowHeight}px`;
     row.style.transform = `translateY(${offset}px)`;
     row.style.gridArea = "grid";
     row.style.display = "grid";
@@ -501,8 +508,8 @@ export default class ZippyTable extends HTMLElement {
           event.preventDefault();
           event.stopPropagation();
           resizing = true;
-          let startX = event.pageX;
-          let startWidth = elem.clientWidth;
+          const startX = event.pageX;
+          const startWidth = elem.clientWidth;
 
           // follow mouse
           const onMove = event => {
@@ -513,7 +520,7 @@ export default class ZippyTable extends HTMLElement {
             setTimeout(() => resizing = false, 0);
             window.removeEventListener("mousemove", onMove);
             window.removeEventListener("mouseup", onUp);
-          }
+          };
           window.addEventListener("mousemove", onMove);
           window.addEventListener("mouseup", onUp);
         };
@@ -552,6 +559,16 @@ export default class ZippyTable extends HTMLElement {
 
   set preload(val) {
     this._preload = val;
+    this.setAttribute("preload", this._preload);
+  }
+
+  get rowHeight() {
+    return this._rowHeight;
+  }
+
+  set rowHeight(val) {
+    this._rowHeight = val;
+    this.setAttribute("row-height", this._rowHeight);
   }
 
   get disableScrollTopMod() {
@@ -560,6 +577,7 @@ export default class ZippyTable extends HTMLElement {
 
   set disableScrollTopMod(val) {
     this._disableScrollTopMod = val;
+    this.setAttribute("disable-scroll-top-mod", this._disableScrollTopMod);
   }
 
   // NOTE: it isn't safe to manipulate items manually outside of ZippyTable
@@ -577,7 +595,7 @@ export default class ZippyTable extends HTMLElement {
       renderers: null,
       originalOrder: index,
     }));
-    this.rowsElem.style.minHeight = `${rowHeight * this._items.length}px`;
+    this.rowsElem.style.minHeight = `${this._rowHeight * this._items.length}px`;
     this.buildRows();
 
     // pre build renderers
