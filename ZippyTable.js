@@ -553,7 +553,7 @@ export default class ZippyTable extends HTMLElement {
       renderers: null,
       originalOrder: index,
     }));
-    this.rowsElem.style.minHeight = rowHeight * this._items.length;
+    this.rowsElem.style.minHeight = `${rowHeight * this._items.length}px`;
     this.buildRows();
 
     // pre build renderers
