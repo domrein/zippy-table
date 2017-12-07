@@ -138,7 +138,7 @@ export default class ZippyTable extends HTMLElement {
     this._itemsMeta = new WeakMap(); // tracks data associated with items (ordering, renderers)
     this._sortBys = [];
     this._columnSizes = {};
-    this._selectionSet = new Set();
+    this._selections = new Set();
 
     this.attachShadow({mode: "open"}).appendChild(this.constructor.template.content.cloneNode(true));
 
@@ -271,6 +271,11 @@ export default class ZippyTable extends HTMLElement {
           this.disableScrollTopMod = newVal;
         }
         break;
+      case "selection-type":
+        if (this._selectionType !== newVal) {
+          this.selectionType = newVal;
+        }
+        break;
     }
   }
 
@@ -316,12 +321,8 @@ export default class ZippyTable extends HTMLElement {
     row.style.willChange = "transform"; // this improves performance _a lot_
     row.style.contain = "strict"; // this improves performance _a lot_ with innerHTML
     row.innerHTML = this._columnHeaders.map(h => "<div></div>").join("");
-    row.addEventListener("contextmenu", event => {
-      this.selectHandler(event);
-    });
-    row.addEventListener("click", event => {
-      this.selectHandler(event);
-    });
+    row.addEventListener("contextmenu", event => this.onClick(event));
+    row.addEventListener("click", event => this.onClick(event));
     this.rowsElem.appendChild(row);
     const rowData = {
       offset,
@@ -331,32 +332,35 @@ export default class ZippyTable extends HTMLElement {
     this.rows.push(rowData);
     this.populateRow(rowData, {createElement: true});
   }
-  
-  selectHandler(event) {
-    const parentRowElem = this.selectionByParent(event.target, this.shadowRoot.getElementById("rows"));
-    const clickedItem = this.rows.filter(row => row.elem === parentRowElem);
-    if (clickedItem) { // TODO: log or handle this if not true? Could it ever be false?
+
+  onClick(event) {
+    const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
+    const row = this.rows.find(row => row.elem === rowElem);
+    if (row) { // TODO: log or handle this if not true? Could it ever be false?
       if (this._selectionType === "multi-row") {
         if (event.shiftKey) {
           // bloc select
-          const startIdx = this.selectedItemRowIndex;
-          const endIdx = this.rows.indexOf(clickedItem[0]);
-          this.toggleSelections(startIdx > endIdx ? this.rows.slice(endIdx, startIdx + 1) : this.rows.slice(startIdx + 1, endIdx + 1), !!this._itemsMeta.get(this.selectedItem).selected);
+          let start = this.selectedItemRowIndex;
+          let end = this.rows.indexOf(row);
+          if (start > end) {
+            [start, end] = [end, start];
+          }
+          this.toggleSelections(this.rows.slice(start, end + 1), !!this._itemsMeta.get(this.selectedItem).selected);
         }
         else if (event.ctrlKey || event.metaKey) {
           // toggle select
-          this.toggleSelections([clickedItem[0]]);
+          this.toggleSelections([row]);
         }
         else {
           // single select
           this.clearSelections();
-          this.toggleSelections([clickedItem[0]]);
+          this.toggleSelections([row]);
         }
       }
       else {
         // reset and select
         this.clearSelections();
-        this.toggleSelections([clickedItem[0]]);
+        this.toggleSelections([row]);
       }
       this.refresh();
     }
@@ -390,11 +394,11 @@ export default class ZippyTable extends HTMLElement {
     });
   }
 
-  selectionByParent(source, targetParent) {
+  findElementByParent(source, targetParent) {
     if (source.parentNode === targetParent) {
       return source;
     }
-    return source.parentNode ? this.selectionByParent(source.parentNode, targetParent) : null;
+    return source.parentNode ? this.findElementByParent(source.parentNode, targetParent) : null;
   }
 
   clearSelections(dataIndexes = null) {
@@ -404,15 +408,15 @@ export default class ZippyTable extends HTMLElement {
         if (item) {
           const itemMeta = this._itemsMeta.get(item);
           delete itemMeta.selected;
-          this._selectionSet.remove(dataIndex);
+          this._selections.remove(dataIndex);
         }
       });
     }
     else {
-      this._selectionSet.forEach(dataIndex => {
+      this._selections.forEach(dataIndex => {
         delete this._itemsMeta.get(this.items[dataIndex]).selected;
       });
-      this._selectionSet.clear();
+      this._selections.clear();
     }
   }
 
@@ -423,20 +427,20 @@ export default class ZippyTable extends HTMLElement {
         if (value === null) {
           if (this._itemsMeta.get(item).selected) {
             delete this._itemsMeta.get(item).selected;
-            this._selectionSet.delete(dataRow.dataIndex);
+            this._selections.delete(dataRow.dataIndex);
           }
           else {
             this._itemsMeta.get(item).selected = true;
-            this._selectionSet.add(dataRow.dataIndex);
+            this._selections.add(dataRow.dataIndex);
           }
         }
         else if (value) {
             this._itemsMeta.get(item).selected = true;
-            this._selectionSet.add(dataRow.dataIndex);
+            this._selections.add(dataRow.dataIndex);
         }
         else {
             delete this._itemsMeta.get(item).selected;
-            this._selectionSet.delete(dataRow.dataIndex);
+            this._selections.delete(dataRow.dataIndex);
         }
       }
       console.log(this.selectedItemRowIndex);
@@ -445,7 +449,7 @@ export default class ZippyTable extends HTMLElement {
 
   get selectedItems() {
     const retData = [];
-    this._selectionSet.forEach(dataIndex => {
+    this._selections.forEach(dataIndex => {
       retData.push(this.items[dataIndex]);
     });
     return retData;
@@ -457,7 +461,7 @@ export default class ZippyTable extends HTMLElement {
 
   get selectedItemDataIndex() {
     let dataIndex = null;
-    this._selectionSet.forEach(item => dataIndex = item);
+    this._selections.forEach(item => dataIndex = item);
     return dataIndex;
   }
 
@@ -711,7 +715,7 @@ export default class ZippyTable extends HTMLElement {
 
   set selectionType(val) {
     this._selectionType = val;
-    this.setAttribute("selectionType", val);
+    this.setAttribute("selection-type", val);
   }
 
   get disableScrollTopMod() {
@@ -737,6 +741,7 @@ export default class ZippyTable extends HTMLElement {
       item,
       renderers: null,
       originalOrder: index,
+      selected: false,
     }));
     this.rowsElem.style.minHeight = `${this._rowHeight * this._items.length}px`;
     this.buildRows();
