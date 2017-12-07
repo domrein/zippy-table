@@ -362,13 +362,14 @@ export default class ZippyTable extends HTMLElement {
         this.clearSelections();
         this.toggleSelections([row]);
       }
-      this.refresh();
     }
   }
 
   // call when data has been manipulated (repopulate all rows)
   refresh() {
-    this.rows.forEach(r => this.populateRow(r));
+    this.rows.forEach(r => {
+      this.populateRow(r);
+    });
   }
 
   populateRow(rowData, createElement = false) {
@@ -401,49 +402,53 @@ export default class ZippyTable extends HTMLElement {
     return source.parentNode ? this.findElementByParent(source.parentNode, targetParent) : null;
   }
 
-  clearSelections(dataIndexes = null) {
-    if (dataIndexes) {
-      dataIndexes.forEach(dataIndex => {
-        const item = this.items[dataIndex];
-        if (item) {
-          const itemMeta = this._itemsMeta.get(item);
-          delete itemMeta.selected;
-          this._selections.remove(dataIndex);
-        }
-      });
-    }
-    else {
-      this._selections.forEach(dataIndex => {
-        delete this._itemsMeta.get(this.items[dataIndex]).selected;
-      });
-      this._selections.clear();
-    }
+  clearSelections() {
+    this._selections.forEach(dataIndex => {
+      const row = this.rows.find(row => row.dataIndex === dataIndex);
+      if (row) {
+        row.elem.style.backgroundColor = "";
+      }
+      this._itemsMeta.get(this.items[dataIndex]).selected = false;
+    });
+    this._selections.clear();
   }
 
   toggleSelections(dataRows, value = null) {
     dataRows.forEach(dataRow => {
       const item = this._items[dataRow.dataIndex];
       if (item) {
+        const row = this.rows.find(row => row.dataIndex === dataRow.dataIndex);
         if (value === null) {
           if (this._itemsMeta.get(item).selected) {
-            delete this._itemsMeta.get(item).selected;
+            this._itemsMeta.get(item).selected = false;
             this._selections.delete(dataRow.dataIndex);
+            if (row) {
+              row.elem.style.backgroundColor = "";
+            }
           }
           else {
             this._itemsMeta.get(item).selected = true;
             this._selections.add(dataRow.dataIndex);
+            if (row) {
+              row.elem.style.backgroundColor = "var(--table-highlight-color)";
+            }
           }
         }
         else if (value) {
             this._itemsMeta.get(item).selected = true;
             this._selections.add(dataRow.dataIndex);
+            if (row) {
+              row.elem.style.backgroundColor = "var(--table-highlight-color)";
+            }
         }
         else {
-            delete this._itemsMeta.get(item).selected;
+            this._itemsMeta.get(item).selected = false;
             this._selections.delete(dataRow.dataIndex);
+            if (row) {
+              row.elem.style.backgroundColor = "";
+            }
         }
       }
-      console.log(this.selectedItemRowIndex);
     });
   }
 
@@ -480,7 +485,7 @@ export default class ZippyTable extends HTMLElement {
     if (!meta.renderers) {
       meta.renderers = this._columnRenderers.map((r, i) => {
         // build renderer
-        const renderer = new renderers[r](item, this._columnProps[i], () => this.itemUpdated(item));
+        const renderer = new renderers[r](item, this._columnProps[i], () => this.onItemUpdate(item));
         return renderer;
       });
     }
@@ -492,7 +497,7 @@ export default class ZippyTable extends HTMLElement {
     }
   }
 
-  itemUpdated(item) {
+  onItemUpdate(item) {
     this.dispatchEvent(new CustomEvent("itemUpdated", {detail: {item}}));
   }
 
