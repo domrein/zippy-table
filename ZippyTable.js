@@ -40,6 +40,18 @@ template.innerHTML = `
       padding-right: 5px;
     }
 
+    #rows > div:nth-child(even) {
+      background-color: var(--noninteractive-component-bg-color);
+    }
+
+    #rows > div:nth-child(odd) {
+      background-color: var(--table-zebra-color);
+    }
+
+    #rows > div:hover {
+      background-color: var(--table-highlight-color);
+    }
+
     /* the cell rows */
     /* changes performance profile, seems more overall gpu, but smoother */
     #rows > div > div {
@@ -77,7 +89,7 @@ const renderers = {
 // X BUG: gap appears in columns when scrolling on osx with retina and magic mouse
 // X intelligent initial column sizes
 // filtering
-// selection
+// X selection
 // sticky columns
 // X column resizing
 // dynamic columns (being able to dynamically add/remove columns)
@@ -113,6 +125,8 @@ export default class ZippyTable extends HTMLElement {
   constructor() {
     super();
 
+    this._selectionType = "row";
+
     this._columnHeaders = [];
     this._columnProps = [];
     this._columnRenderers = [];
@@ -124,6 +138,7 @@ export default class ZippyTable extends HTMLElement {
     this._itemsMeta = new WeakMap(); // tracks data associated with items (ordering, renderers)
     this._sortBys = [];
     this._columnSizes = {};
+    this._selectionSet = new Set();
 
     this.attachShadow({mode: "open"}).appendChild(this.constructor.template.content.cloneNode(true));
 
@@ -290,7 +305,7 @@ export default class ZippyTable extends HTMLElement {
   buildRow(index) {
     const offset = index * this._rowHeight;
     const row = document.createElement("div");
-    row.style.backgroundColor = index % 2 ? "#333" : "#444";
+    // TODO: determine which of these to move to css defs at ~ line 38.
     row.style.height = `${this._rowHeight}px`;
     row.style.transform = `translateY(${offset}px)`;
     row.style.gridArea = "grid";
@@ -301,6 +316,37 @@ export default class ZippyTable extends HTMLElement {
     row.style.willChange = "transform"; // this improves performance _a lot_
     row.style.contain = "strict"; // this improves performance _a lot_ with innerHTML
     row.innerHTML = this._columnHeaders.map(h => "<div></div>").join("");
+    row.addEventListener("click", event => {
+      // find parent div
+      const parentRowElem = this.selectionByParent(event.target, this.shadowRoot.getElementById("rows"));
+      const clickedItem = this.rows.filter(row => row.elem === parentRowElem);
+      if (clickedItem) { // TODO: log or handle this if not true? Could it ever be false?
+        if (this._selectionType === "multi-row") {
+          if (event.shiftKey) {
+            // bloc select
+            const startIdx = this.selectedItemRowIndex;
+            const endIdx = this.rows.indexOf(clickedItem[0]);
+            this.toggleSelections(startIdx > endIdx ? this.rows.slice(endIdx, startIdx + 1) : this.rows.slice(startIdx + 1, endIdx + 1), !!this._itemsMeta.get(this.selectedItem).selected);
+          }
+          else if (event.ctrlKey || event.metaKey) {
+            // toggle select
+            this.toggleSelections([clickedItem[0]]);
+          }
+          else {
+            // single select
+            this.clearSelections();
+            this.toggleSelections([clickedItem[0]]);
+          }
+        }
+        else {
+          // reset and select
+          this.clearSelections();
+          this.toggleSelections([clickedItem[0]]);
+        }
+        this.refresh();
+      }
+    });
+
     this.rowsElem.appendChild(row);
     const rowData = {
       offset,
@@ -324,12 +370,95 @@ export default class ZippyTable extends HTMLElement {
     // initialize renderers if needed
     const data = this.items[rowData.dataIndex];
     const meta = this._itemsMeta.get(data);
+    if (meta.selected) {
+      rowData.elem.style.backgroundColor = "var(--table-highlight-color)";
+    }
+    else {
+      rowData.elem.style.backgroundColor = "";
+    }
     this.buildRenderers(data, {meta, elem: createElement ? rowData.elem : null});
     // run renderers
     meta.renderers.forEach((r, i) => {
       const elem = rowData.elem.children[i].firstChild;
+      // TODO: implement cell selection.
       r.render(elem);
     });
+  }
+
+  selectionByParent(source, targetParent) {
+    if (source.parentNode === targetParent) {
+      return source;
+    }
+    return source.parentNode ? this.selectionByParent(source.parentNode, targetParent) : null;
+  }
+
+  clearSelections(dataIndexes = null) {
+    if (dataIndexes) {
+      dataIndexes.forEach(dataIndex => {
+        const item = this.items[dataIndex];
+        if (item) {
+          const itemMeta = this._itemsMeta.get(item);
+          delete itemMeta.selected;
+          this._selectionSet.remove(dataIndex);
+        }
+      });
+    }
+    else {
+      this._selectionSet.forEach(dataIndex => {
+        delete this._itemsMeta.get(this.items[dataIndex]).selected;
+      });
+      this._selectionSet.clear();
+    }
+  }
+
+  toggleSelections(dataRows, value = null) {
+    dataRows.forEach(dataRow => {
+      const item = this._items[dataRow.dataIndex];
+      if (item) {
+        if (value === null) {
+          if (this._itemsMeta.get(item).selected) {
+            delete this._itemsMeta.get(item).selected;
+            this._selectionSet.delete(dataRow.dataIndex);
+          }
+          else {
+            this._itemsMeta.get(item).selected = true;
+            this._selectionSet.add(dataRow.dataIndex);
+          }
+        }
+        else if (value) {
+            this._itemsMeta.get(item).selected = true;
+            this._selectionSet.add(dataRow.dataIndex);
+        }
+        else {
+            delete this._itemsMeta.get(item).selected;
+            this._selectionSet.delete(dataRow.dataIndex);
+        }
+      }
+      console.log(this.selectedItemRowIndex);
+    });
+  }
+
+  get selectedItems() {
+    const retData = [];
+    this._selectionSet.forEach(dataIndex => {
+      retData.push(this.items[dataIndex]);
+    });
+    return retData;
+  }
+
+  get selectedItem() {
+    return this.items[this.selectedItemDataIndex];
+  }
+
+  get selectedItemDataIndex() {
+    let dataIndex = null;
+    this._selectionSet.forEach(item => dataIndex = item);
+    return dataIndex;
+  }
+
+  get selectedItemRowIndex() {
+    const selectedDataIndex = this.selectedItemDataIndex;
+    return this.rows.findIndex(i => i.dataIndex === selectedDataIndex);
   }
 
   // build renderers for item if needed
@@ -569,6 +698,15 @@ export default class ZippyTable extends HTMLElement {
   set rowHeight(val) {
     this._rowHeight = val;
     this.setAttribute("row-height", this._rowHeight);
+  }
+
+  get selectionType() {
+    return this._selectionType;
+  }
+
+  set selectionType(val) {
+    this._selectionType = val;
+    this.setAttribute("selectionType", val);
   }
 
   get disableScrollTopMod() {
