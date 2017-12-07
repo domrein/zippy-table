@@ -316,37 +316,12 @@ export default class ZippyTable extends HTMLElement {
     row.style.willChange = "transform"; // this improves performance _a lot_
     row.style.contain = "strict"; // this improves performance _a lot_ with innerHTML
     row.innerHTML = this._columnHeaders.map(h => "<div></div>").join("");
-    row.addEventListener("click", event => {
-      // find parent div
-      const parentRowElem = this.selectionByParent(event.target, this.shadowRoot.getElementById("rows"));
-      const clickedItem = this.rows.filter(row => row.elem === parentRowElem);
-      if (clickedItem) { // TODO: log or handle this if not true? Could it ever be false?
-        if (this._selectionType === "multi-row") {
-          if (event.shiftKey) {
-            // bloc select
-            const startIdx = this.selectedItemRowIndex;
-            const endIdx = this.rows.indexOf(clickedItem[0]);
-            this.toggleSelections(startIdx > endIdx ? this.rows.slice(endIdx, startIdx + 1) : this.rows.slice(startIdx + 1, endIdx + 1), !!this._itemsMeta.get(this.selectedItem).selected);
-          }
-          else if (event.ctrlKey || event.metaKey) {
-            // toggle select
-            this.toggleSelections([clickedItem[0]]);
-          }
-          else {
-            // single select
-            this.clearSelections();
-            this.toggleSelections([clickedItem[0]]);
-          }
-        }
-        else {
-          // reset and select
-          this.clearSelections();
-          this.toggleSelections([clickedItem[0]]);
-        }
-        this.refresh();
-      }
+    row.addEventListener("contextmenu", event => {
+      this.selectHandler(event);
     });
-
+    row.addEventListener("click", event => {
+      this.selectHandler(event);
+    });
     this.rowsElem.appendChild(row);
     const rowData = {
       offset,
@@ -355,6 +330,36 @@ export default class ZippyTable extends HTMLElement {
     };
     this.rows.push(rowData);
     this.populateRow(rowData, {createElement: true});
+  }
+  
+  selectHandler(event) {
+    const parentRowElem = this.selectionByParent(event.target, this.shadowRoot.getElementById("rows"));
+    const clickedItem = this.rows.filter(row => row.elem === parentRowElem);
+    if (clickedItem) { // TODO: log or handle this if not true? Could it ever be false?
+      if (this._selectionType === "multi-row") {
+        if (event.shiftKey) {
+          // bloc select
+          const startIdx = this.selectedItemRowIndex;
+          const endIdx = this.rows.indexOf(clickedItem[0]);
+          this.toggleSelections(startIdx > endIdx ? this.rows.slice(endIdx, startIdx + 1) : this.rows.slice(startIdx + 1, endIdx + 1), !!this._itemsMeta.get(this.selectedItem).selected);
+        }
+        else if (event.ctrlKey || event.metaKey) {
+          // toggle select
+          this.toggleSelections([clickedItem[0]]);
+        }
+        else {
+          // single select
+          this.clearSelections();
+          this.toggleSelections([clickedItem[0]]);
+        }
+      }
+      else {
+        // reset and select
+        this.clearSelections();
+        this.toggleSelections([clickedItem[0]]);
+      }
+      this.refresh();
+    }
   }
 
   // call when data has been manipulated (repopulate all rows)
