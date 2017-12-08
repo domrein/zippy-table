@@ -7,8 +7,9 @@ template.innerHTML = `
       background-color: var(--background-color);
       grid-gap: 2px;
       color: var(--text-color);
-      font-family: monospace;
+      font-family: var(--font-family);
 
+      --font-family: monospace;
       --text-color: #DDD;
       --scrollbar-width: 0px;
       --background-color: #222;
