@@ -340,27 +340,30 @@ export default class ZippyTable extends HTMLElement {
       if (this._selectionType === "multi-row") {
         if (event.shiftKey) {
           // bloc select
-          let start = this.selectedItemRowIndex;
-          let end = this.rows.indexOf(row);
+          let item = null;
+          this._selections.forEach(i => item = i);
+          let start = this.items.indexOf(item);
+          let end = row.dataIndex;
           if (start > end) {
             [start, end] = [end, start];
           }
-          this.toggleSelections(this.rows.slice(start, end + 1), !!this._itemsMeta.get(this.selectedItem).selected);
+          // TODO : fix start / end
+          this.toggleSelections([start, end], !!this._itemsMeta.get(this.selectedItem).selected);
         }
         else if (event.ctrlKey || event.metaKey) {
           // toggle select
-          this.toggleSelections([row]);
+          this.toggleSelections([row.dataIndex]);
         }
         else {
           // single select
           this.clearSelections();
-          this.toggleSelections([row]);
+          this.toggleSelections([row.dataIndex]);
         }
       }
       else {
         // reset and select
         this.clearSelections();
-        this.toggleSelections([row]);
+        this.toggleSelections([row.dataIndex]);
       }
     }
   }
@@ -403,7 +406,8 @@ export default class ZippyTable extends HTMLElement {
   }
 
   clearSelections() {
-    this._selections.forEach(dataIndex => {
+    this._selections.forEach(item => {
+      const dataIndex = this.items.indexOf(item);
       const row = this.rows.find(row => row.dataIndex === dataIndex);
       if (row) {
         row.elem.style.backgroundColor = "";
@@ -413,66 +417,53 @@ export default class ZippyTable extends HTMLElement {
     this._selections.clear();
   }
 
-  toggleSelections(dataRows, value = null) {
-    dataRows.forEach(dataRow => {
-      const item = this._items[dataRow.dataIndex];
-      if (item) {
-        const row = this.rows.find(row => row.dataIndex === dataRow.dataIndex);
-        if (value === null) {
-          if (this._itemsMeta.get(item).selected) {
-            this._itemsMeta.get(item).selected = false;
-            this._selections.delete(dataRow.dataIndex);
-            if (row) {
-              row.elem.style.backgroundColor = "";
-            }
+  toggleSelections([start, end], value = null) {
+    end = end ? end : start;
+    for (let dataIndex = start; dataIndex <= end; dataIndex++) {
+      const item = this._items[dataIndex];
+      const row = this.rows.find(row => row.dataIndex === dataIndex);
+      const itemMeta = this._itemsMeta.get(item);
+      if (value === null) {
+        if (itemMeta.selected) {
+          itemMeta.selected = false;
+          this._selections.delete(this.items[dataIndex]);
+          if (row) {
+            row.elem.style.backgroundColor = "";
           }
-          else {
-            this._itemsMeta.get(item).selected = true;
-            this._selections.add(dataRow.dataIndex);
-            if (row) {
-              row.elem.style.backgroundColor = "var(--table-highlight-color)";
-            }
-          }
-        }
-        else if (value) {
-            this._itemsMeta.get(item).selected = true;
-            this._selections.add(dataRow.dataIndex);
-            if (row) {
-              row.elem.style.backgroundColor = "var(--table-highlight-color)";
-            }
         }
         else {
-            this._itemsMeta.get(item).selected = false;
-            this._selections.delete(dataRow.dataIndex);
-            if (row) {
-              row.elem.style.backgroundColor = "";
-            }
+          itemMeta.selected = true;
+          this._selections.add(this.items[dataIndex]);
+          if (row) {
+            row.elem.style.backgroundColor = "var(--table-highlight-color)";
+          }
         }
       }
-    });
+      else if (value) {
+          itemMeta.selected = true;
+          this._selections.add(this.items[dataIndex]);
+          if (row) {
+            row.elem.style.backgroundColor = "var(--table-highlight-color)";
+          }
+      }
+      else {
+          itemMeta.selected = false;
+          this._selections.delete(this.items[dataIndex]);
+          if (row) {
+            row.elem.style.backgroundColor = "";
+          }
+      }
+    }
   }
 
   get selectedItems() {
-    const retData = [];
-    this._selections.forEach(dataIndex => {
-      retData.push(this.items[dataIndex]);
-    });
-    return retData;
+    return Array.from(this._selections);
   }
 
   get selectedItem() {
-    return this.items[this.selectedItemDataIndex];
-  }
-
-  get selectedItemDataIndex() {
-    let dataIndex = null;
-    this._selections.forEach(item => dataIndex = item);
-    return dataIndex;
-  }
-
-  get selectedItemRowIndex() {
-    const selectedDataIndex = this.selectedItemDataIndex;
-    return this.rows.findIndex(i => i.dataIndex === selectedDataIndex);
+    let item = null;
+    this._selections.forEach(each => item = each);
+    return item;
   }
 
   // build renderers for item if needed
