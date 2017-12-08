@@ -321,8 +321,18 @@ export default class ZippyTable extends HTMLElement {
     row.style.willChange = "transform"; // this improves performance _a lot_
     row.style.contain = "strict"; // this improves performance _a lot_ with innerHTML
     row.innerHTML = this._columnHeaders.map(h => "<div></div>").join("");
-    row.addEventListener("contextmenu", event => this.onClick(event));
-    row.addEventListener("click", event => this.onClick(event));
+    row.addEventListener("contextmenu", event => {
+      const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
+      const row = this.rows.find(row => row.elem === rowElem);
+      if (!this.selectedItems.includes(this.items[row.dataIndex])) {
+        this.onClick(row);
+      }
+    });
+    row.addEventListener("click", event => {
+      const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
+      const row = this.rows.find(row => row.elem === rowElem);
+      this.onClick(row);
+    });
     this.rowsElem.appendChild(row);
     const rowData = {
       offset,
@@ -333,9 +343,7 @@ export default class ZippyTable extends HTMLElement {
     this.populateRow(rowData, {createElement: true});
   }
 
-  onClick(event) {
-    const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
-    const row = this.rows.find(row => row.elem === rowElem);
+  onClick(row) {
     if (row) { // TODO: log or handle this if not true? Could it ever be false?
       if (this._selectionType === "multi-row") {
         if (event.shiftKey) {
