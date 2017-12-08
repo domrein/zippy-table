@@ -4,11 +4,17 @@ template.innerHTML = `
     :host {
       display: grid;
       grid-template-rows: 32px 1fr;
-      background-color: #222;
+      background-color: var(--background-color);
       grid-gap: 2px;
-      color: #DDD;
+      color: var(--text-color);
       font-family: monospace;
+
+      --text-color: #DDD;
       --scrollbar-width: 0px;
+      --background-color: #222;
+      --zebra-even: #222;
+      --zebra-odd: #333;
+      --highlight-color: #205794;
     }
 
     #headers {
@@ -41,15 +47,15 @@ template.innerHTML = `
     }
 
     #rows > div:nth-child(even) {
-      background-color: var(--noninteractive-component-bg-color);
+      background-color: var(--zebra-even);
     }
 
     #rows > div:nth-child(odd) {
-      background-color: var(--table-zebra-color);
+      background-color: var(--zebra-odd);
     }
 
     #rows > div:hover {
-      background-color: var(--table-highlight-color);
+      background-color: var(--highlight-color);
     }
 
     /* the cell rows */
@@ -392,7 +398,7 @@ export default class ZippyTable extends HTMLElement {
     const data = this.items[rowData.dataIndex];
     const meta = this._itemsMeta.get(data);
     if (meta.selected) {
-      rowData.elem.style.backgroundColor = "var(--table-highlight-color)";
+      rowData.elem.style.backgroundColor = "var(--highlight-color)";
     }
     else {
       rowData.elem.style.backgroundColor = "";
@@ -443,7 +449,7 @@ export default class ZippyTable extends HTMLElement {
           itemMeta.selected = true;
           this._selections.add(this.items[dataIndex]);
           if (row) {
-            row.elem.style.backgroundColor = "var(--table-highlight-color)";
+            row.elem.style.backgroundColor = "var(--highlight-color)";
           }
         }
       }
@@ -451,7 +457,7 @@ export default class ZippyTable extends HTMLElement {
           itemMeta.selected = true;
           this._selections.add(this.items[dataIndex]);
           if (row) {
-            row.elem.style.backgroundColor = "var(--table-highlight-color)";
+            row.elem.style.backgroundColor = "var(--highlight-color)";
           }
       }
       else {
@@ -642,7 +648,7 @@ export default class ZippyTable extends HTMLElement {
         const resizeHandle = document.createElement("div");
         resizeHandle.style.cursor = "col-resize";
         resizeHandle.style.width = "4px";
-        resizeHandle.style.backgroundColor = "#222";
+        resizeHandle.style.backgroundColor = "var(--background-color)";
         resizeHandle.style.height = "100%";
         resizeHandle.style.justifySelf = "flex-end";
         resizeHandle.style.marginRight = "5px";
