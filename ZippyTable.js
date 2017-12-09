@@ -25,11 +25,13 @@ template.innerHTML = `
       overflow: hidden;
       padding-left: 5px;
       padding-right: 5px;
+      height: 100%;
     }
 
     #headers > div {
       overflow: hidden;
       text-overflow: ellipsis;
+      height: 100%;
     }
 
     #body {
@@ -603,7 +605,7 @@ export default class ZippyTable extends HTMLElement {
     this._columnHeaders = val;
     this.setAttribute("columnHeaders", this._columnHeaders.join(","));
     this.headersElem.innerHTML = "";
-    this.headersElem.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `calc(var(--column-width-${i}) - var(--scrollbar-width))`).join(" ");
+    this.headersElem.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `calc(var(--column-width-${i}) - var(--scrollbar-width) / ${this._columnHeaders.length})`).join(" ");
     this._columnHeaders.forEach((h, i) => {
       const elem = document.createElement("div");
       elem.style.display = "flex";
