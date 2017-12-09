@@ -777,7 +777,8 @@ export default class ZippyTable extends HTMLElement {
           requestIdleCallback(build);
         }
       };
-      if (this.rows.length) {
+      // TODO: remove requestIdleCallback check once it's supported in all browsers
+      if (this.rows.length && window.requestIdleCallback) {
         requestIdleCallback(build);
       }
     }
