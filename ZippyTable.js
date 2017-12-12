@@ -356,16 +356,19 @@ export default class ZippyTable extends HTMLElement {
     if (row) { // TODO: log or handle this if not true? Could it ever be false?
       if (this._selectionType === "multi-row") {
         if (event.shiftKey) {
-          // bloc select
+          // bloc select.  If nothing was previously selected, select index 0 as 'start'.
           let item = null;
           this._selections.forEach(i => item = i);
+          if (!item) {
+            this.toggleSelections([0]);
+            item = this._items[0];
+          }
           let start = this.items.indexOf(item);
           let end = row.dataIndex;
           if (start > end) {
             [start, end] = [end, start];
           }
-          // TODO : fix start / end
-          this.toggleSelections([start, end], !!this._itemsMeta.get(this.selectedItem).selected);
+          this.toggleSelections([start, end], !!this._itemsMeta.get(item).selected);
         }
         else if (event.ctrlKey || event.metaKey) {
           // toggle select
