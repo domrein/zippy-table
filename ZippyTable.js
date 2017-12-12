@@ -350,13 +350,17 @@ export default class ZippyTable extends HTMLElement {
           // bloc select
           let item = null;
           this._selections.forEach(i => item = i);
+          if (!item) {
+            this.toggleSelections([0]);
+            item = this._items[0];
+          }
           let start = this.items.indexOf(item);
           let end = row.dataIndex;
           if (start > end) {
             [start, end] = [end, start];
           }
           // TODO : fix start / end
-          this.toggleSelections([start, end], !!this._itemsMeta.get(this.selectedItem).selected);
+          this.toggleSelections([start, end], !!this._itemsMeta.get(item).selected);
         }
         else if (event.ctrlKey || event.metaKey) {
           // toggle select
