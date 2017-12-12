@@ -741,6 +741,7 @@ export default class ZippyTable extends HTMLElement {
   // NOTE: most items are indexed by ref, so there are issues if duplicates are in items
   set items(val) {
     this._items = val;
+    this._itemsMeta = new WeakMap();
     this._items.forEach((item, index) => this._itemsMeta.set(item, {
       item,
       renderers: null,
