@@ -18,6 +18,8 @@ template.innerHTML = `
       --zebra-even: #333;
       --zebra-odd: #444;
       --highlight-color: #205794;
+
+      --row-height: 32px; /* use "row-height" attribute to set this */
     }
 
     :host([hide-header]) {
@@ -53,10 +55,17 @@ template.innerHTML = `
       grid-template: "grid";
     }
 
-    /* the rows  */
+    /* rows  */
     #rows > div {
       padding-left: 5px;
       padding-right: 5px;
+      grid-area: grid;
+      display: grid;
+      grid-template-rows: 1fr;
+      align-items: center;
+      will-change: transform; /* this improves performance _a lot_ */
+      contain: strict; /* this improves performance _a lot_ with innerHTML */
+      height: var(--row-height);
     }
 
     #rows > div:nth-child(even) {
@@ -71,10 +80,9 @@ template.innerHTML = `
       background-color: var(--highlight-color);
     }
 
-    /* the cell rows */
-    /* changes performance profile, seems more overall gpu, but smoother */
+    /* row cells */
     #rows > div > div {
-      overflow: hidden;
+      overflow: hidden; /* changes performance profile, seems more overall gpu, but smoother */
     }
   </style>
   <div id="headers">
@@ -332,16 +340,8 @@ export default class ZippyTable extends HTMLElement {
   buildRow(index) {
     const offset = index * this._rowHeight;
     const row = document.createElement("div");
-    // TODO: determine which of these to move to css defs at ~ line 38.
-    row.style.height = `${this._rowHeight}px`;
     row.style.transform = `translateY(${offset}px)`;
-    row.style.gridArea = "grid";
-    row.style.display = "grid";
-    row.style.gridTemplateRows = "1fr";
     row.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `var(--column-width-${i})`).join(" ");
-    row.style.alignItems = "center";
-    row.style.willChange = "transform"; // this improves performance _a lot_
-    row.style.contain = "strict"; // this improves performance _a lot_ with innerHTML
     row.innerHTML = this._columnHeaders.map(h => "<div></div>").join("");
     row.addEventListener("contextmenu", event => {
       const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
@@ -735,6 +735,7 @@ export default class ZippyTable extends HTMLElement {
 
   set rowHeight(val) {
     this._rowHeight = val;
+    this.shadowRoot.host.style.setProperty("--row-height", `${this._rowHeight}px`);
     this.setAttribute("row-height", this._rowHeight);
   }
 
