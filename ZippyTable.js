@@ -20,6 +20,12 @@ template.innerHTML = `
       --highlight-color: #205794;
     }
 
+    :host([hide-header]) {
+      grid-template-rows: 0px 1fr;
+      grid-gap: 0px;
+      background-color: red;
+    }
+
     #headers {
       background-color: #333;
       align-items: center;
@@ -127,6 +133,7 @@ export default class ZippyTable extends HTMLElement {
       "column-renderers",
       "preload",
       "row-height",
+      "hide-header",
       "disable-scroll-top-mod", // HACK/BUG: sometimes scrollTopMod is needed, other times it isn't
     ];
   }
@@ -277,6 +284,8 @@ export default class ZippyTable extends HTMLElement {
         if (this._rowHeight !== newVal) {
           this.rowHeight = newVal;
         }
+        break;
+      case "hide-header":
         break;
       case "disable-scroll-top-mod":
         newVal = `${newVal}`.toLowerCase() == "true";
@@ -727,6 +736,19 @@ export default class ZippyTable extends HTMLElement {
   set rowHeight(val) {
     this._rowHeight = val;
     this.setAttribute("row-height", this._rowHeight);
+  }
+
+  get hideHeader() {
+    return this.hasAttribute("hide-header");
+  }
+
+  set hideHeader(val) {
+    if (val) {
+      this.setAttribute("hide-header", val);
+    }
+    else {
+      this.removeAttribute("hide-header");
+    }
   }
 
   get selectionType() {
