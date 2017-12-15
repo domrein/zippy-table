@@ -118,9 +118,9 @@ export default class ZippyTable extends HTMLElement {
 
   static get observedAttributes() {
     return [
-      "columnHeaders",
-      "columnProps",
-      "columnRenderers",
+      "column-headers",
+      "column-props",
+      "column-renderers",
       "preload",
       "row-height",
       "disable-scroll-top-mod", // HACK/BUG: sometimes scrollTopMod is needed, other times it isn't
@@ -247,19 +247,19 @@ export default class ZippyTable extends HTMLElement {
 
   attributeChangedCallback(name, oldVal, newVal) {
     switch (name) {
-      case "columnHeaders":
+      case "column-headers":
         if (this._columnHeaders.join(",") !== newVal) {
-          this.columnHeaders = newVal;
+          this.columnHeaders = newVal.split(",");
         }
         break;
-      case "columnProps":
+      case "column-props":
         if (this._columnProps.join(",") !== newVal) {
-          this.columnProps = newVal;
+          this.columnProps = newVal.split(",");
         }
         break;
-      case "columnRenderers":
+      case "column-renderers":
         if (this._columnRenderers.join(",") !== newVal) {
-          this.columnRenderers = newVal;
+          this.columnRenderers = newVal.split(",");
         }
         break;
       case "preload":
@@ -606,7 +606,7 @@ export default class ZippyTable extends HTMLElement {
 
   set columnHeaders(val) {
     this._columnHeaders = val;
-    this.setAttribute("columnHeaders", this._columnHeaders.join(","));
+    this.setAttribute("column-headers", this._columnHeaders.join(","));
     this.headersElem.innerHTML = "";
     this.headersElem.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `calc(var(--column-width-${i}) - var(--scrollbar-width) / ${this._columnHeaders.length})`).join(" ");
     this._columnHeaders.forEach((h, i) => {
@@ -694,7 +694,7 @@ export default class ZippyTable extends HTMLElement {
 
   set columnProps(val) {
     this._columnProps = val;
-    this.setAttribute("columnProps", this._columnProps.join(","));
+    this.setAttribute("column-props", this._columnProps.join(","));
   }
 
   get columnRenderers() {
@@ -704,7 +704,7 @@ export default class ZippyTable extends HTMLElement {
   set columnRenderers(val) {
     this._columnRenderers = val;
     this.rows.forEach(r => r.renderers = null);
-    this.setAttribute("columnRenderers", this._columnRenderers.join(","));
+    this.setAttribute("column-renderers", this._columnRenderers.join(","));
   }
 
   get preload() {
