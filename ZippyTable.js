@@ -3,6 +3,8 @@ template.innerHTML = `
   <style>
     :host {
       display: grid;
+      grid-template-areas: "header"
+                           "body";
       grid-template-rows: 32px 1fr;
       background-color: var(--background-color);
       grid-gap: 2px;
@@ -26,6 +28,7 @@ template.innerHTML = `
       padding-left: 5px;
       padding-right: 5px;
       height: 100%;
+      grid-area: header;
     }
 
     #headers > div {
@@ -36,6 +39,7 @@ template.innerHTML = `
 
     #body {
       overflow: auto;
+      grid-area: body;
     }
 
     #rows {
