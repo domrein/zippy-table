@@ -13,8 +13,8 @@ template.innerHTML = `
       --text-color: #DDD;
       --scrollbar-width: 0px;
       --background-color: #222;
-      --zebra-even: #222;
-      --zebra-odd: #333;
+      --zebra-even: #333;
+      --zebra-odd: #222;
       --highlight-color: #205794;
     }
 
