@@ -16,7 +16,7 @@ template.innerHTML = `
       --scrollbar-width: 0px;
       --background-color: #222;
       --zebra-even: #333;
-      --zebra-odd: #222;
+      --zebra-odd: #444;
       --highlight-color: #205794;
     }
 
