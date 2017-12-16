@@ -173,17 +173,20 @@ export default class ZippyTable extends HTMLElement {
     this.headersElem = this.shadowRoot.getElementById("headers");
 
     this.bodyElem = this.shadowRoot.getElementById("body");
+    let width = this.bodyElem.clientWidth;
     let height = this.bodyElem.clientHeight;
     const resize = () => {
       // TODO: replace this with ResizeObserver when available
       // if resized
-      if (this.bodyElem.clientHeight !== height) {
+      if (this.bodyElem.clientWidth !== width || this.bodyElem.clientHeight !== height) {
+        width = this.bodyElem.clientWidth;
         height = this.bodyElem.clientHeight;
         this.moveRows(false);
         while (this.calcRowsNeeded() > this.rows.length) {
           const maxIndex = this.rows.reduce((a, b) => Math.max(a, b.dataIndex), 0);
           this.buildRow(maxIndex + 1);
         }
+        this.forceRedraw();
       }
       requestAnimationFrame(resize);
     };
@@ -406,6 +409,17 @@ export default class ZippyTable extends HTMLElement {
     this.rows.forEach(r => {
       this.populateRow(r);
     });
+
+    this.forceRedraw();
+  }
+
+  forceRedraw() {
+    // HACK:
+    // Sometimes rows will just disappear when updating textContent
+    // Looks like a Chromium bug.
+    // this forces a redraw to get around the bug
+    this.rowsElem.style.width = `${this.headersElem.clientWidth + 1}px`;
+    this.rowsElem.style.width = `${this.headersElem.clientWidth}px`;
   }
 
   populateRow(rowData, createElement = false) {
