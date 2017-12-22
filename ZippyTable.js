@@ -25,7 +25,6 @@ template.innerHTML = `
     :host([hide-header]) {
       grid-template-rows: 0px 1fr;
       grid-gap: 0px;
-      background-color: red;
     }
 
     #headers {
