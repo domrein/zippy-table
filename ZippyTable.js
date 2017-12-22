@@ -161,9 +161,11 @@ export default class ZippyTable extends HTMLElement {
     this._rowHeight = 32;
     this._disableScrollTopMod = false;
 
-    this._items = [];
+    this._items = []; // raw items set by developer
+    this._displayItems = []; // shallow copy of _items that we apply sorts/filtering to
     this._itemsMeta = new WeakMap(); // tracks data associated with items (ordering, renderers)
     this._sortBys = [];
+    this._filter = null;
     this._columnSizes = {};
     this._selections = new Set();
 
@@ -250,8 +252,8 @@ export default class ZippyTable extends HTMLElement {
       }
       // recycle/repopulate if item moved and it's at a valid index
       if (recycled) {
-        if (dataIndex >= 0 && dataIndex < this._items.length) {
-          const meta = this._itemsMeta.get(this._items[dataIndex]);
+        if (dataIndex >= 0 && dataIndex < this.displayItems.length) {
+          const meta = this._itemsMeta.get(this.displayItems[dataIndex]);
           meta.renderers.forEach((renderer, i) => {
             if (renderer.recycle) {
               const elem = r.elem.children[i].firstChild;
@@ -320,11 +322,6 @@ export default class ZippyTable extends HTMLElement {
     if (numRows % 2) {
       numRows++;
     }
-    // if we don't need to recycle rows, just display the number present
-    const displayedRows = Math.ceil(this.bodyElem.clientHeight / this._rowHeight);
-    if (displayedRows >= this.items.length || numRows >= this.items.length) {
-      numRows = this.items.length;
-    }
 
     return numRows;
   }
@@ -348,7 +345,7 @@ export default class ZippyTable extends HTMLElement {
     row.addEventListener("contextmenu", event => {
       const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
       const row = this.rows.find(row => row.elem === rowElem);
-      if (!this.selectedItems.includes(this.items[row.dataIndex])) {
+      if (!this.selectedItems.includes(this.displayItems[row.dataIndex])) {
         this.onClick(row);
       }
     });
@@ -378,7 +375,7 @@ export default class ZippyTable extends HTMLElement {
             this.toggleSelections([0]);
             item = this._items[0];
           }
-          let start = this.items.indexOf(item);
+          let start = this.displayItems.indexOf(item);
           let end = row.dataIndex;
           if (start > end) {
             [start, end] = [end, start];
@@ -404,7 +401,28 @@ export default class ZippyTable extends HTMLElement {
   }
 
   // call when data has been manipulated (repopulate all rows)
-  refresh() {
+  refresh({refreshItems = true} = {}) {
+    if (refreshItems) {
+      // make sure all items have meta
+      this._items.forEach(i => this.buildMeta(i));
+      // rebuild _displayItems
+      this._displayItems = this._items.map(i => i);
+      // apply filter/sort
+      this.applySort({refresh: false});
+      this.applyFilter({refresh: false});
+
+      // adjust height of container
+      this.rowsElem.style.minHeight = `${this._rowHeight * this.displayItems.length}px`;
+      this.moveRows(true);
+
+      // adjust number of rows
+      while (this.calcRowsNeeded() > this.rows.length) {
+        const maxIndex = this.rows.reduce((a, b) => Math.max(a, b.dataIndex), 0);
+        this.buildRow(maxIndex + 1);
+        this.buildRow(maxIndex + 2);
+      }
+    }
+
     this.rows.forEach(r => {
       this.populateRow(r);
     });
@@ -417,17 +435,29 @@ export default class ZippyTable extends HTMLElement {
     // Sometimes rows will just disappear when updating textContent
     // Looks like a Chromium bug.
     // this forces a redraw to get around the bug
+
+    // record scroll position
+    const scrollPos = this.bodyElem.scrollTop;
+
     this.rowsElem.style.width = `${this.headersElem.clientWidth + 1}px`;
     this.rowsElem.style.width = `${this.headersElem.clientWidth}px`;
+
+    // reset scroll position
+    this.bodyElem.scrollTop = scrollPos;
   }
 
   populateRow(rowData, createElement = false) {
     // skip populating rows at invalid data indexes (they should be invisible)
-    if (rowData.dataIndex < 0 || rowData.dataIndex >= this.items.length) {
+    if (rowData.dataIndex < 0 || rowData.dataIndex >= this.displayItems.length) {
+      rowData.elem.style.display = "none";
       return;
     }
+    else {
+      rowData.elem.style.display = "";
+    }
+
     // initialize renderers if needed
-    const data = this.items[rowData.dataIndex];
+    const data = this.displayItems[rowData.dataIndex];
     const meta = this._itemsMeta.get(data);
     if (meta.selected) {
       rowData.elem.style.backgroundColor = "var(--highlight-color)";
@@ -453,12 +483,12 @@ export default class ZippyTable extends HTMLElement {
 
   clearSelections() {
     this._selections.forEach(item => {
-      const dataIndex = this.items.indexOf(item);
+      const dataIndex = this._items.indexOf(item);
       const row = this.rows.find(row => row.dataIndex === dataIndex);
       if (row) {
         row.elem.style.backgroundColor = "";
       }
-      this._itemsMeta.get(this.items[dataIndex]).selected = false;
+      this._itemsMeta.get(this._items[dataIndex]).selected = false;
     });
     this._selections.clear();
   }
@@ -466,20 +496,20 @@ export default class ZippyTable extends HTMLElement {
   toggleSelections([start, end], value = null) {
     end = end ? end : start;
     for (let dataIndex = start; dataIndex <= end; dataIndex++) {
-      const item = this._items[dataIndex];
+      const item = this.displayItems[dataIndex];
       const row = this.rows.find(row => row.dataIndex === dataIndex);
       const itemMeta = this._itemsMeta.get(item);
       if (value === null) {
         if (itemMeta.selected) {
           itemMeta.selected = false;
-          this._selections.delete(this.items[dataIndex]);
+          this._selections.delete(this.displayItems[dataIndex]);
           if (row) {
             row.elem.style.backgroundColor = "";
           }
         }
         else {
           itemMeta.selected = true;
-          this._selections.add(this.items[dataIndex]);
+          this._selections.add(this.displayItems[dataIndex]);
           if (row) {
             row.elem.style.backgroundColor = "var(--highlight-color)";
           }
@@ -487,29 +517,19 @@ export default class ZippyTable extends HTMLElement {
       }
       else if (value) {
           itemMeta.selected = true;
-          this._selections.add(this.items[dataIndex]);
+          this._selections.add(this.displayItems[dataIndex]);
           if (row) {
             row.elem.style.backgroundColor = "var(--highlight-color)";
           }
       }
       else {
           itemMeta.selected = false;
-          this._selections.delete(this.items[dataIndex]);
+          this._selections.delete(this.displayItems[dataIndex]);
           if (row) {
             row.elem.style.backgroundColor = "";
           }
       }
     }
-  }
-
-  get selectedItems() {
-    return Array.from(this._selections);
-  }
-
-  get selectedItem() {
-    let item = null;
-    this._selections.forEach(each => item = each);
-    return item;
   }
 
   // build renderers for item if needed
@@ -538,10 +558,20 @@ export default class ZippyTable extends HTMLElement {
     this.dispatchEvent(new CustomEvent("itemUpdated", {detail: {item}}));
   }
 
-  sort() {
+  applyFilter({refresh = true} = {}) {
+    if (this._filter) {
+      this._displayItems = this._displayItems.filter(this._filter);
+    }
+
+    if (refresh) {
+      this.refresh({refreshItems: true});
+    }
+  }
+
+  applySort({refresh = true} = {}) {
     // sort according to rows
     if (this._sortBys.length) {
-      this._items.sort((a, b) => {
+      this._displayItems.sort((a, b) => {
         for (const sort of this._sortBys) {
           const prop = sort.substr(0, sort.length - 1);
           const up = sort[sort.length - 1] === "+";
@@ -564,17 +594,9 @@ export default class ZippyTable extends HTMLElement {
         return 0;
       });
     }
-    // sort according to original order
-    else {
-      const items = this._items.concat([]);
-      const meta = items.map(i => this._itemsMeta.get(i));
-      meta.sort((a, b) => a.originalOrder - b.originalOrder);
-      while (this._items.length) {
-        this._items.pop();
-      }
-      meta.forEach(m => this._items.push(m.item));
+    if (refresh) {
+      this.refresh({refreshItems: false});
     }
-    this.refresh();
   }
 
   setColumnSize(column, size) {
@@ -626,6 +648,30 @@ export default class ZippyTable extends HTMLElement {
     });
   }
 
+  buildMeta(item, {stomp = false} = {}) {
+    let meta = null;
+    if (stomp || !this._itemsMeta.has(item)) {
+      meta = {
+        item: this._sizer,
+        renderers: null,
+        selected: false,
+      };
+      this._itemsMeta.set(item, meta);
+    }
+
+    return meta;
+  }
+
+  get selectedItems() {
+    return Array.from(this._selections);
+  }
+
+  get selectedItem() {
+    let item = null;
+    this._selections.forEach(each => item = each);
+    return item;
+  }
+
   get columnHeaders() {
     return this._columnHeaders;
   }
@@ -671,7 +717,7 @@ export default class ZippyTable extends HTMLElement {
           text.textContent = `${h}`;
           text.style.cursor = "n-resize";
         }
-        this.sort();
+        this.applySort();
       });
       elem.appendChild(text);
 
@@ -793,16 +839,18 @@ export default class ZippyTable extends HTMLElement {
   // NOTE: most items are indexed by ref, so there are issues if duplicates are in items
   set items(val) {
     this._items = val;
-    this._items.forEach((item, index) => this._itemsMeta.set(item, {
-      item,
-      renderers: null,
-      originalOrder: index,
-      selected: false,
-    }));
-    this.rowsElem.style.minHeight = `${this._rowHeight * this._items.length}px`;
+    this._items.forEach((item, index) => this.buildMeta(item, {stomp: true}));
+
+    this._displayItems = this._items.map(i => i);
+    this.applySort({refresh: false});
+    this.applyFilter({refresh: false});
+
+    this.rowsElem.style.minHeight = `${this._rowHeight * this.displayItems.length}px`;
     this.buildRows();
 
     // pre build renderers
+    // NOTE: buildIndex can be off when refresh is run if items are added/deleted
+    //       renderer will be built when it is displayed anyways though
     if (this.preload) {
       const buildTarget = this._items;
       let buildIndex = this.rows.length;
@@ -812,11 +860,11 @@ export default class ZippyTable extends HTMLElement {
           return;
         }
         // 2 is just an arbitrary number of milliseconds so we don't overrun the deadline
-        while (deadline.timeRemaining() > 2 && buildIndex < this.items.length) {
-          this.buildRenderers(this.items[buildIndex]);
+        while (deadline.timeRemaining() > 2 && buildIndex < this._items.length) {
+          this.buildRenderers(this._items[buildIndex]);
           buildIndex++;
         }
-        if (buildIndex < this.items.length) {
+        if (buildIndex < this._items.length) {
           requestIdleCallback(build);
         }
       };
@@ -824,6 +872,17 @@ export default class ZippyTable extends HTMLElement {
       if (this.rows.length && window.requestIdleCallback) {
         requestIdleCallback(build);
       }
+    }
+  }
+
+  // gets displayed item at index (could be items/displayItems depending on filtering/sorting/etc)
+  get displayItems() {
+    // if sorted/filtered
+    if (this._sortBys.length || this._filter) {
+      return this._displayItems;
+    }
+    else {
+      return this._items;
     }
   }
 
@@ -835,12 +894,7 @@ export default class ZippyTable extends HTMLElement {
   set sizer(val) {
     this._sizer = val;
 
-    const meta = {
-      item: this._sizer,
-      renderers: null,
-      originalOrder: 0,
-    };
-    this._itemsMeta.set(this._sizer, meta);
+    const meta = this.buildMeta(this._sizer, {stomp: true});
 
     const row = document.createElement("div");
     row.style.display = "flex";
@@ -872,6 +926,15 @@ export default class ZippyTable extends HTMLElement {
     });
     this.bodyElem.removeChild(row);
     this.calcColumnSizes();
+  }
+
+  get filter() {
+    return this._filter;
+  }
+
+  set filter(val) {
+    this._filter = val;
+    this.applyFilter();
   }
 }
 
