@@ -142,6 +142,7 @@ export default class ZippyTable extends HTMLElement {
       "row-height",
       "hide-header",
       "disable-scroll-top-mod", // HACK/BUG: sometimes scrollTopMod is needed, other times it isn't
+      "selection-type",
     ];
   }
 
@@ -561,6 +562,11 @@ export default class ZippyTable extends HTMLElement {
   applyFilter({refresh = true} = {}) {
     if (this._filter) {
       this._displayItems = this._displayItems.filter(this._filter);
+      for (const item of this.selectedItems) {
+        if (!this.filteredItems.includes(item)) {
+          this.toggleSelections([this.items.indexOf(item)], false);
+        }
+      }
     }
 
     if (refresh) {
