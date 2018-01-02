@@ -563,7 +563,7 @@ export default class ZippyTable extends HTMLElement {
     if (this._filter) {
       this._displayItems = this._displayItems.filter(this._filter);
       for (const item of this.selectedItems) {
-        if (!this.displayItems.includes(item)) {
+        if (!this._displayItems.includes(item)) {
           this.toggleSelections([this.items.indexOf(item)], false);
         }
       }
