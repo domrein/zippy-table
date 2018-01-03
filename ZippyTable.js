@@ -781,6 +781,17 @@ export default class ZippyTable extends HTMLElement {
 
   set columnRenderers(val) {
     this._columnRenderers = val;
+
+    // validate renderers
+    const invalidRenderers = this._columnRenderers.filter(r => !renderers.hasOwnProperty(r));
+    if (invalidRenderers.length) {
+      console.error(`Invalid renderer/renderers assigned to table: ${invalidRenderers.join(", ")}. Using text renderer instead.`);
+      invalidRenderers.forEach(r => {
+        this._columnRenderers[this._columnRenderers.indexOf(r)] = "text";
+      });
+    }
+
+
     this.rows.forEach(r => r.renderers = null);
     this.setAttribute("column-renderers", this._columnRenderers.join(","));
   }
