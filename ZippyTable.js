@@ -362,7 +362,7 @@ export default class ZippyTable extends HTMLElement {
       dataIndex: index,
     };
     this.rows.push(rowData);
-    this.populateRow(rowData, {createElement: true});
+    this.populateRow(rowData);
   }
 
   onClick(row) {
@@ -414,7 +414,7 @@ export default class ZippyTable extends HTMLElement {
 
       // adjust height of container
       this.rowsElem.style.minHeight = `${this._rowHeight * this.displayItems.length}px`;
-      this.moveRows(true);
+      this.moveRows(false);
 
       // adjust number of rows
       while (this.calcRowsNeeded() > this.rows.length) {
@@ -447,7 +447,7 @@ export default class ZippyTable extends HTMLElement {
     this.bodyElem.scrollTop = scrollPos;
   }
 
-  populateRow(rowData, createElement = false) {
+  populateRow(rowData) {
     // skip populating rows at invalid data indexes (they should be invisible)
     if (rowData.dataIndex < 0 || rowData.dataIndex >= this.displayItems.length) {
       rowData.elem.style.display = "none";
@@ -466,7 +466,7 @@ export default class ZippyTable extends HTMLElement {
     else {
       rowData.elem.style.backgroundColor = "";
     }
-    this.buildRenderers(data, {meta, elem: createElement ? rowData.elem : null});
+    this.buildRenderers(data, {meta, elem: rowData.elem});
     // run renderers
     meta.renderers.forEach((r, i) => {
       const elem = rowData.elem.children[i].firstChild;
@@ -512,7 +512,7 @@ export default class ZippyTable extends HTMLElement {
           itemMeta.selected = true;
           this._selections.add(this.displayItems[dataIndex]);
           if (row) {
-            row.elem.style.backgroundColor = "var(zippy-table-highlight-color, var(--highlight-color))";
+            row.elem.style.backgroundColor = "var(--zippy-table-highlight-color, var(--highlight-color))";
           }
         }
       }
@@ -520,7 +520,7 @@ export default class ZippyTable extends HTMLElement {
           itemMeta.selected = true;
           this._selections.add(this.displayItems[dataIndex]);
           if (row) {
-            row.elem.style.backgroundColor = "var(zippy-table-highlight-color, var(--highlight-color))";
+            row.elem.style.backgroundColor = "var(--zippy-table-highlight-color, var(--highlight-color))";
           }
       }
       else {
@@ -547,8 +547,8 @@ export default class ZippyTable extends HTMLElement {
         return renderer;
       });
     }
-    // build dom elements
-    if (elem) {
+    // build dom elements if missing
+    if (elem && elem.children.length && !elem.children[0].children.length) {
       meta.renderers.forEach((r, i) => {
         elem.children[i].appendChild(r.create());
       });
