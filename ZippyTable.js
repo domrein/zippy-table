@@ -547,7 +547,7 @@ export default class ZippyTable extends HTMLElement {
         return renderer;
       });
     }
-    // build dom elements
+    // build dom elements if missing
     if (elem && elem.children.length && !elem.children[0].children.length) {
       meta.renderers.forEach((r, i) => {
         elem.children[i].appendChild(r.create());
