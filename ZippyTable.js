@@ -183,11 +183,18 @@ export default class ZippyTable extends HTMLElement {
       if (this.bodyElem.clientWidth !== width || this.bodyElem.clientHeight !== height) {
         width = this.bodyElem.clientWidth;
         height = this.bodyElem.clientHeight;
-        this.moveRows(false);
+
         while (this.calcRowsNeeded() > this.rows.length) {
-          const maxIndex = this.rows.reduce((a, b) => Math.max(a, b.dataIndex), 0);
-          this.buildRow(maxIndex + 1);
+          this.buildRow(this.rows.length);
         }
+
+        // reset index/offsets and move back into place so that zebra order is preserved
+        this.rows.forEach((r, i) => {
+          r.dataIndex = i;
+          r.offset = i * this._rowHeight;
+        });
+        this.moveRows(false);
+
         this.forceRedraw();
       }
       requestAnimationFrame(resize);
