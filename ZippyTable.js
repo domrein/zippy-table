@@ -257,7 +257,10 @@ export default class ZippyTable extends HTMLElement {
           meta.renderers.forEach((renderer, i) => {
             if (renderer.recycle) {
               const elem = r.elem.children[i].firstChild;
-              renderer.recycle(elem);
+              // only recycle if renderer has run create
+              if (elem) {
+                renderer.recycle(elem);
+              }
             }
           });
         }
