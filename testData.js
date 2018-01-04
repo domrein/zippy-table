@@ -35,4 +35,11 @@ export const items = [
   {id: 31, name: "Unwieldy Sabre", created: 1511633603673, cost: 60, rare: false, description: "It's surprisingly wieldy"},
   {id: 32, name: "Tasty Hardtack", created: 1511749533205, cost: 3, rare: false, description: "Just like mother used to make"},
   {id: 33, name: "Zesty Sammich", created: 1511820924915, cost: 5, rare: false, description: "YOLO"},
+  {id: 34, name: "Salty Seaweed Roll", created: 1515091077383, cost: 1, rare: false, description: "Salty and satisfying"},
+  {id: 35, name: "Dull Kobold Blade", created: 1515091126289, cost: 10, rare: false, description: "A fine piece of workmanship by Kobold standards"},
+  {id: 36, name: "Flaming Leather Hat", created: 1515091489720, cost: 23, rare: true, description: "The flames are leatherwork in red and orange"},
+  {id: 37, name: "Masterful Kitty Lathe", created: 1515091733578, cost: 10000, rare: true, description: "It's the best money can buy, but its uses are limited"},
+  {id: 38, name: "Lovely Knitted Mittens", created: 1515091808062, cost: 5, rare: false, description: "Made with love by the shopkeep's mother"},
+  {id: 39, name: "Bunion Ointment", created: 1515091944130, cost: 15, rare: false, description: "Don't adventure without it!"},
+  {id: 40, name: "Caterwauling Alarm Clock", created: 1515092124157, cost: 30, rare: false, description: "Guaranteed to wake you"},
 ];
