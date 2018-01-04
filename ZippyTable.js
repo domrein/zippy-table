@@ -246,7 +246,7 @@ export default class ZippyTable extends HTMLElement {
         r.dataIndex += this.rows.length;
         recycled = true;
       }
-      while (up && r.offset > scrollTop + this.bodyElem.clientHeight) {
+      while (up && r.offset > scrollTop + this.bodyElem.clientHeight && (dataIndex > this.rows.length || this.rows[0].dataIndex !== 0)) {
         r.offset -= this.rows.length * this._rowHeight;
         r.dataIndex -= this.rows.length;
         recycled = true;
