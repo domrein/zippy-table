@@ -492,14 +492,13 @@ export default class ZippyTable extends HTMLElement {
   }
 
   clearSelections() {
+    this.rows.forEach(row => row.elem.style.backgroundColor = "");
+
     this._selections.forEach(item => {
       const dataIndex = this._items.indexOf(item);
-      const row = this.rows.find(row => row.dataIndex === dataIndex);
-      if (row) {
-        row.elem.style.backgroundColor = "";
-      }
       this._itemsMeta.get(this._items[dataIndex]).selected = false;
     });
+
     this._selections.clear();
   }
 
@@ -570,12 +569,13 @@ export default class ZippyTable extends HTMLElement {
 
   applyFilter({refresh = true} = {}) {
     if (this._filter) {
-      this._displayItems = this._displayItems.filter(this._filter);
+      const displayItems = this._displayItems.filter(this._filter);
       for (const item of this.selectedItems) {
-        if (!this._displayItems.includes(item)) {
-          this.toggleSelections([this.items.indexOf(item)], false);
+        if (!displayItems.includes(item)) {
+          this.toggleSelections([this._displayItems.indexOf(item)], false);
         }
       }
+      this._displayItems = displayItems;
     }
 
     if (refresh) {
