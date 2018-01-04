@@ -3,17 +3,36 @@
     <style>
       body {
         margin: 0;
+        background-color: #222;
+        color: #DDD;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
 
       #table {
-        width: 100vw;
-        height: 100vh;
+        height: 100%;
+        margin: 5px;
+      }
+
+      #filter-row {
+        display: flex;
+        margin: 5px;
+      }
+
+      h3 {
+        align-self: center;
       }
     </style>
     <script type="module" src="testData.js"></script>
     <script type="module" src="ZippyTable.js"></script>
   </head>
   <body>
+    <h3>Zippy Table - the Zippiest of Tables</h3>
+    <div id="filter-row">
+      <div>Name:&nbsp;</div><input id="name-filter" type="text"></input>
+    </div>
     <zippy-table id="table"></zippy-table>
     <script type="module">
       import * as testData from "./testData.js";
@@ -85,7 +104,8 @@
       table.columnProps = testData.props;
       table.columnRenderers = testData.renderers;
       const tableData = [];
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 1; i++) {
+      // for (let i = 0; i < 100; i++) {
         tableData.push(...JSON.parse(JSON.stringify(testData.items)));
       }
       table.sizer = {
@@ -107,6 +127,16 @@
       // setTimeout(() => {
       //   table.items = [];
       // }, 1000);
+
+      const nameFilter = document.getElementById("name-filter");
+      nameFilter.addEventListener("keyup", () => {
+        if (nameFilter.value) {
+          table.filter = i => i.name.toLowerCase().includes(nameFilter.value.toLowerCase());
+        }
+        else {
+          table.filter = null;
+        }
+      });
     </script>
   </body>
 </html>
