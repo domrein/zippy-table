@@ -238,23 +238,22 @@ export default class ZippyTable extends HTMLElement {
     this.rows.forEach(r => {
       // row is off top
       let recycled = false;
-      const dataIndex = r.dataIndex;
-      while (!up && (r.offset + this._rowHeight < scrollTop)
-        && (r.offset + this.rows.length * this._rowHeight + this._rowHeight <= this.rowsElem.clientHeight)
-      ) {
+      // If going down and row is offscreen and has a valid dataIndex, recycle.
+      while (!up && r.offset + this._rowHeight < scrollTop && r.dataIndex + this.rows.length < this.displayItems.length) {
         r.offset += this.rows.length * this._rowHeight;
         r.dataIndex += this.rows.length;
         recycled = true;
       }
-      while (up && r.offset > scrollTop + this.bodyElem.clientHeight) {
+      // If going up and row is offscreen and has a valid dataIndex, recycle.
+      while (up && r.offset > scrollTop + this.bodyElem.clientHeight && r.dataIndex - this.rows.length >= 0) {
         r.offset -= this.rows.length * this._rowHeight;
         r.dataIndex -= this.rows.length;
         recycled = true;
       }
       // recycle/repopulate if item moved and it's at a valid index
       if (recycled) {
-        if (dataIndex >= 0 && dataIndex < this.displayItems.length) {
-          const meta = this._itemsMeta.get(this.displayItems[dataIndex]);
+        if (r.dataIndex >= 0 && r.dataIndex < this.displayItems.length) {
+          const meta = this._itemsMeta.get(this.displayItems[r.dataIndex]);
           meta.renderers.forEach((renderer, i) => {
             if (renderer.recycle) {
               const elem = r.elem.children[i].firstChild;
