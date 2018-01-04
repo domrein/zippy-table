@@ -245,6 +245,9 @@ export default class ZippyTable extends HTMLElement {
     this.rows.forEach(r => {
       // row is off top
       let recycled = false;
+
+      const originalDataIndex = r.dataIndex; // used for recycling
+
       // If going down and row is offscreen and has a valid dataIndex, recycle.
       while (!up && r.offset + this._rowHeight < scrollTop && r.dataIndex + this.rows.length < this.displayItems.length) {
         r.offset += this.rows.length * this._rowHeight;
@@ -257,10 +260,10 @@ export default class ZippyTable extends HTMLElement {
         r.dataIndex -= this.rows.length;
         recycled = true;
       }
-      // recycle/repopulate if item moved and it's at a valid index
+      // recycle/repopulate if item has been recycled and it's at a valid index
       if (recycled) {
-        if (r.dataIndex >= 0 && r.dataIndex < this.displayItems.length) {
-          const meta = this._itemsMeta.get(this.displayItems[r.dataIndex]);
+        if (originalDataIndex >= 0 && originalDataIndex < this.displayItems.length) {
+          const meta = this._itemsMeta.get(this.displayItems[originalDataIndex]);
           meta.renderers.forEach((renderer, i) => {
             if (renderer.recycle) {
               const elem = r.elem.children[i].firstChild;
