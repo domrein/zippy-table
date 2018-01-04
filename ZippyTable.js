@@ -449,11 +449,11 @@ export default class ZippyTable extends HTMLElement {
   populateRow(rowData) {
     // skip populating rows at invalid data indexes (they should be invisible)
     if (rowData.dataIndex < 0 || rowData.dataIndex >= this.displayItems.length) {
-      rowData.elem.style.visibility = "hidden";
+      rowData.elem.style.display = "none";
       return;
     }
     else {
-      rowData.elem.style.visibility = "";
+      rowData.elem.style.display = "";
     }
 
     // initialize renderers if needed
