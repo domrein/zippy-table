@@ -190,8 +190,12 @@ export default class ZippyTable extends HTMLElement {
 
         // reset index/offsets and move back into place so that zebra order is preserved
         this.rows.forEach((r, i) => {
-          r.dataIndex = i;
-          r.offset = i * this._rowHeight;
+          if (i !== r.dataIndex) {
+            this.recycleRow(r);
+
+            r.dataIndex = i;
+            r.offset = i * this._rowHeight;
+          }
         });
         this.moveRows(false);
 
@@ -250,31 +254,24 @@ export default class ZippyTable extends HTMLElement {
 
       // If going down and row is offscreen and has a valid dataIndex, recycle.
       while (!up && r.offset + this._rowHeight < scrollTop && r.dataIndex + this.rows.length < this.displayItems.length) {
+        // TODO: this is potentially recycled multiple times
+        this.recycleRow(r);
+
         r.offset += this.rows.length * this._rowHeight;
         r.dataIndex += this.rows.length;
         recycled = true;
       }
       // If going up and row is offscreen and has a valid dataIndex, recycle.
       while (up && r.offset > scrollTop + this.bodyElem.clientHeight && r.dataIndex - this.rows.length >= 0) {
+        // TODO: this is potentially recycled multiple times
+        this.recycleRow(r);
+
         r.offset -= this.rows.length * this._rowHeight;
         r.dataIndex -= this.rows.length;
         recycled = true;
       }
       // recycle/repopulate if item has been recycled and it's at a valid index
       if (recycled) {
-        if (originalDataIndex >= 0 && originalDataIndex < this.displayItems.length) {
-          const meta = this._itemsMeta.get(this.displayItems[originalDataIndex]);
-          meta.renderers.forEach((renderer, i) => {
-            if (renderer.recycle) {
-              const elem = r.elem.children[i].firstChild;
-              // only recycle if renderer has run create
-              if (elem) {
-                renderer.recycle(elem);
-              }
-            }
-          });
-        }
-
         r.elem.style.transform = `translateY(${r.offset}px)`;
         this.populateRow(r);
       }
@@ -415,6 +412,8 @@ export default class ZippyTable extends HTMLElement {
 
   // call when data has been manipulated (repopulate all rows)
   refresh({refreshItems = true} = {}) {
+    // TODO: handle recycling when refresh is called
+    //       the biggest worry here is how to handle an item that may have been deleted
     if (refreshItems) {
       // make sure all items have meta
       this._items.forEach(i => this.buildMeta(i));
@@ -485,6 +484,21 @@ export default class ZippyTable extends HTMLElement {
       // TODO: implement cell selection.
       r.render(elem);
     });
+  }
+
+  recycleRow(rowData) {
+    if (rowData.dataIndex >= 0 && rowData.dataIndex < this.displayItems.length) {
+      const meta = this._itemsMeta.get(this.displayItems[rowData.dataIndex]);
+      meta.renderers.forEach((renderer, i) => {
+        if (renderer.recycle) {
+          const elem = rowData.elem.children[i].firstChild;
+          // only recycle if renderer has run create
+          if (elem) {
+            renderer.recycle(elem);
+          }
+        }
+      });
+    }
   }
 
   findElementByParent(source, targetParent) {
@@ -570,7 +584,11 @@ export default class ZippyTable extends HTMLElement {
     this.dispatchEvent(new CustomEvent("itemUpdated", {detail: {item}}));
   }
 
-  applyFilter({refresh = true} = {}) {
+  applyFilter({refresh = true, recycle = true} = {}) {
+    if (refresh && recycle) {
+      this.rows.forEach(r => this.recycleRow(r));
+    }
+
     if (this._filter) {
       const displayItems = this._displayItems.filter(this._filter);
       for (const item of this.selectedItems) {
@@ -586,7 +604,12 @@ export default class ZippyTable extends HTMLElement {
     }
   }
 
-  applySort({refresh = true} = {}) {
+  // recycle is optional and should only be used when altering the sortBys
+  applySort({refresh = true, recycle = true} = {}) {
+    if (refresh && recycle) {
+      this.rows.forEach(r => this.recycleRow(r));
+    }
+
     // sort according to rows
     if (this._sortBys.length) {
       this._displayItems.sort((a, b) => {
@@ -720,6 +743,10 @@ export default class ZippyTable extends HTMLElement {
         const prop = this._columnProps[i];
         const ascIndex = this._sortBys.indexOf(`${prop}+`);
         const descIndex = this._sortBys.indexOf(`${prop}-`);
+
+        // recycle items
+        this.rows.forEach(r => this.recycleRow(r));
+
         if (ascIndex === -1 && descIndex === -1) {
           this._sortBys.push(`${prop}+`);
           text.textContent = `↑${h}`;
@@ -735,7 +762,7 @@ export default class ZippyTable extends HTMLElement {
           text.textContent = `${h}`;
           text.style.cursor = "n-resize";
         }
-        this.applySort();
+        this.applySort({recycle: false});
       });
       elem.appendChild(text);
 
@@ -867,6 +894,8 @@ export default class ZippyTable extends HTMLElement {
 
   // NOTE: most items are indexed by ref, so there are issues if duplicates are in items
   set items(val) {
+    this.rows.forEach(r => this.recycleRow(r));
+
     this._items = val;
     this._items.forEach((item, index) => this.buildMeta(item, {stomp: true}));
 
@@ -962,8 +991,9 @@ export default class ZippyTable extends HTMLElement {
   }
 
   set filter(val) {
+    this.rows.forEach(r => this.recycleRow(r));
     this._filter = val;
-    this.applyFilter();
+    this.applyFilter({recycle: false});
   }
 }
 
