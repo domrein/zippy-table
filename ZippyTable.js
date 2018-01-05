@@ -894,7 +894,9 @@ export default class ZippyTable extends HTMLElement {
 
   // NOTE: most items are indexed by ref, so there are issues if duplicates are in items
   set items(val) {
+    // clean up
     this.rows.forEach(r => this.recycleRow(r));
+    this.clearSelections();
 
     this._items = val;
     this._items.forEach((item, index) => this.buildMeta(item, {stomp: true}));
