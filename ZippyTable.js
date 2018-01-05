@@ -366,9 +366,10 @@ export default class ZippyTable extends HTMLElement {
     });
     this.rowsElem.appendChild(row);
     const rowData = {
-      offset,
-      elem: row,
-      dataIndex: index,
+      offset, // offset from top of table in pixels
+      elem: row, // row div that contains all cells
+      dataIndex: index, // place in list
+      item: null, // ref to currently rendered item
     };
     this.rows.push(rowData);
     this.populateRow(rowData);
@@ -412,13 +413,18 @@ export default class ZippyTable extends HTMLElement {
 
   // call when data has been manipulated (repopulate all rows)
   refresh({refreshItems = true} = {}) {
-    // TODO: handle recycling when refresh is called
-    //       the biggest worry here is how to handle an item that may have been deleted
+    // recycle rows
+    this.rows.forEach(r => {
+      this.recycleRow(r);
+    });
+
     if (refreshItems) {
       // make sure all items have meta
       this._items.forEach(i => this.buildMeta(i));
+
       // rebuild _displayItems
       this._displayItems = this._items.map(i => i);
+
       // apply filter/sort
       this.applySort({refresh: false});
       this.applyFilter({refresh: false});
@@ -469,15 +475,15 @@ export default class ZippyTable extends HTMLElement {
     }
 
     // initialize renderers if needed
-    const data = this.displayItems[rowData.dataIndex];
-    const meta = this._itemsMeta.get(data);
+    rowData.item = this.displayItems[rowData.dataIndex];
+    const meta = this._itemsMeta.get(rowData.item);
     if (meta.selected) {
       rowData.elem.style.backgroundColor = "var(--zippy-table-highlight-color, var(--highlight-color))";
     }
     else {
       rowData.elem.style.backgroundColor = "";
     }
-    this.buildRenderers(data, {meta, elem: rowData.elem});
+    this.buildRenderers(rowData.item, {meta, elem: rowData.elem});
     // run renderers
     meta.renderers.forEach((r, i) => {
       const elem = rowData.elem.children[i].firstChild;
@@ -487,18 +493,22 @@ export default class ZippyTable extends HTMLElement {
   }
 
   recycleRow(rowData) {
-    if (rowData.dataIndex >= 0 && rowData.dataIndex < this.displayItems.length) {
-      const meta = this._itemsMeta.get(this.displayItems[rowData.dataIndex]);
-      meta.renderers.forEach((renderer, i) => {
-        if (renderer.recycle) {
-          const elem = rowData.elem.children[i].firstChild;
-          // only recycle if renderer has run create
-          if (elem) {
-            renderer.recycle(elem);
-          }
-        }
-      });
+    if (rowData.item) {
+      this.recycleItem(rowData.elem, rowData.item);
     }
+  }
+
+  recycleItem(rowElem, item) {
+    const meta = this._itemsMeta.get(item);
+    meta.renderers.forEach((renderer, i) => {
+      if (renderer.recycle) {
+        const elem = rowElem.children[i].firstChild;
+        // only recycle if renderer has run create
+        if (elem) {
+          renderer.recycle(elem);
+        }
+      }
+    });
   }
 
   findElementByParent(source, targetParent) {
@@ -693,7 +703,6 @@ export default class ZippyTable extends HTMLElement {
     let meta = null;
     if (stomp || !this._itemsMeta.has(item)) {
       meta = {
-        item: this._sizer,
         renderers: null,
         selected: false,
       };

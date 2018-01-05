@@ -42,4 +42,5 @@ export const items = [
   {id: 38, name: "Lovely Knitted Mittens", created: 1515091808062, cost: 5, rare: false, description: "Made with love by the shopkeep's mother"},
   {id: 39, name: "Bunion Ointment", created: 1515091944130, cost: 15, rare: false, description: "Don't adventure without it!"},
   {id: 40, name: "Caterwauling Alarm Clock", created: 1515092124157, cost: 30, rare: false, description: "Guaranteed to wake you"},
+  {id: 41, name: "Beagle of Justice", created: 1515189098175, cost: 200, rare: true, description: "Comes with free cape"},
 ];
