@@ -578,7 +578,7 @@ export default class ZippyTable extends HTMLElement {
     if (!meta.renderers) {
       meta.renderers = this._columnRenderers.map((r, i) => {
         // build renderer
-        const renderer = new renderers[r](item, this._columnProps[i], () => this.onItemUpdate(item));
+        const renderer = new renderers[r](item, this._columnProps[i], refresh => this.onItemUpdate(item, {refresh}));
         return renderer;
       });
     }
@@ -590,7 +590,10 @@ export default class ZippyTable extends HTMLElement {
     }
   }
 
-  onItemUpdate(item) {
+  onItemUpdate(item, {refresh = false} = {}) {
+    if (refresh) {
+      this.refresh({refreshItems: true});
+    }
     this.dispatchEvent(new CustomEvent("itemUpdated", {detail: {item}}));
   }
 
