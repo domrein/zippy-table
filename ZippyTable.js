@@ -175,35 +175,44 @@ export default class ZippyTable extends HTMLElement {
     this.headersElem = this.shadowRoot.getElementById("headers");
 
     this.bodyElem = this.shadowRoot.getElementById("body");
-    let width = this.bodyElem.clientWidth;
-    let height = this.bodyElem.clientHeight;
-    const resize = () => {
-      // TODO: replace this with ResizeObserver when available
-      // if resized
-      if (this.bodyElem.clientWidth !== width || this.bodyElem.clientHeight !== height) {
-        width = this.bodyElem.clientWidth;
-        height = this.bodyElem.clientHeight;
 
-        while (this.calcRowsNeeded() > this.rows.length) {
-          this.buildRow(this.rows.length);
-        }
-
-        // reset index/offsets and move back into place so that zebra order is preserved
-        this.rows.forEach((r, i) => {
-          if (i !== r.dataIndex) {
-            this.recycleRow(r);
-
-            r.dataIndex = i;
-            r.offset = i * this._rowHeight;
-          }
-        });
-        this.moveRows(false);
-
-        this.forceRedraw();
+    // body resizing
+    const resized = () => {
+      while (this.calcRowsNeeded() > this.rows.length) {
+        this.buildRow(this.rows.length);
       }
-      requestAnimationFrame(resize);
+
+      // reset index/offsets and move back into place so that zebra order is preserved
+      this.rows.forEach((r, i) => {
+        if (i !== r.dataIndex) {
+          this.recycleRow(r);
+
+          r.dataIndex = i;
+          r.offset = i * this._rowHeight;
+        }
+      });
+      this.moveRows(false);
+
+      this.forceRedraw();
     };
-    requestAnimationFrame(resize);
+    if (ResizeObserver) {
+      const observer = new ResizeObserver(() => resized());
+      observer.observe(this.bodyElem);
+    }
+    else {
+      let width = this.bodyElem.clientWidth;
+      let height = this.bodyElem.clientHeight;
+      const resize = () => {
+        // if resized
+        if (this.bodyElem.clientWidth !== width || this.bodyElem.clientHeight !== height) {
+          width = this.bodyElem.clientWidth;
+          height = this.bodyElem.clientHeight;
+          resized();
+        }
+        requestAnimationFrame(resize);
+      };
+      requestAnimationFrame(resize);
+    }
 
     this.rowsElem = this.shadowRoot.getElementById("rows");
 
