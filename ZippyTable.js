@@ -397,7 +397,7 @@ export default class ZippyTable extends HTMLElement {
         this.clearSelections();
         this.toggleSelections([row.dataIndex]);
       }
-      this.dispatchEvent(new CustomEvent("selectionChanged", {detail: {selectedItems: this.selectedItems}}));
+      this.dispatchEvent(new CustomEvent("selectionChanged", {detail: {selectedItems: this.selectedItems, selectedItem: this.selectedItem}}));
     }
   }
 
