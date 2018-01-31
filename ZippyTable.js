@@ -195,7 +195,7 @@ export default class ZippyTable extends HTMLElement {
 
       this.forceRedraw();
     };
-    if (ResizeObserver) {
+    if (window.ResizeObserver) {
       const observer = new ResizeObserver(() => resized());
       observer.observe(this.bodyElem);
     }
