@@ -43,4 +43,10 @@ export const items = [
   {id: 39, name: "Bunion Ointment", created: 1515091944130, cost: 15, rare: false, description: "Don't adventure without it!"},
   {id: 40, name: "Caterwauling Alarm Clock", created: 1515092124157, cost: 30, rare: false, description: "Guaranteed to wake you"},
   {id: 41, name: "Beagle of Justice", created: 1515189098175, cost: 200, rare: true, description: "Comes with free cape"},
+  {id: 42, name: "Wilty Flowers", created: 1517597058487, cost: 1, rare: false, description: "For mommy"},
+  {id: 43, name: "Rubber Shield", created: 1517597140751, cost: 10, rare: false, description: "Bounces blows back on attacker"},
+  {id: 44, name: "Fashion Neutral Hat", created: 1517870558889, cost: 8, rare: false, description: "Neither offensive nor impressive"},
+  {id: 45, name: "Bastard Sword", created: 1517870592007, cost: 35, rare: false, description: "It prefers you call it a \"hand-and-a-half\" sword"},
+  {id: 46, name: "Black Serrated Blade", created: 1517870921657, cost: 30, rare: false, description: "The serrations look awesome"},
+  {id: 47, name: "Elvish-English Dictionary", created: 1517871202334, cost: 30, rare: false, description: "Half the book is written using Wingdings"},
 ];
