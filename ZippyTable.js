@@ -365,13 +365,13 @@ export default class ZippyTable extends HTMLElement {
       const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
       const row = this.rows.find(row => row.elem === rowElem);
       if (!this.selectedItems.includes(this.displayItems[row.dataIndex])) {
-        this.onClick(row);
+        this.onClick(event, row);
       }
     });
     row.addEventListener("click", event => {
       const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
       const row = this.rows.find(row => row.elem === rowElem);
-      this.onClick(row);
+      this.onClick(event, row);
     });
     this.rowsElem.appendChild(row);
     const rowData = {
@@ -384,7 +384,7 @@ export default class ZippyTable extends HTMLElement {
     this.populateRow(rowData);
   }
 
-  onClick(row) {
+  onClick(event, row) {
     if (row) { // TODO: log or handle this if not true? Could it ever be false?
       if (this._selectionType === "multi-row") {
         if (event.shiftKey) {
