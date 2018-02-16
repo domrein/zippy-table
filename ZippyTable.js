@@ -259,8 +259,6 @@ export default class ZippyTable extends HTMLElement {
       // row is off top
       let recycled = false;
 
-      const originalDataIndex = r.dataIndex; // used for recycling
-
       // If going down and row is offscreen and has a valid dataIndex, recycle.
       while (!up && r.offset + this._rowHeight < scrollTop && r.dataIndex + this.rows.length < this.displayItems.length) {
         // TODO: this is potentially recycled multiple times
@@ -358,15 +356,14 @@ export default class ZippyTable extends HTMLElement {
   buildRow(index) {
     const offset = index * this._rowHeight;
     const row = document.createElement("div");
+    row.className = "row";
     row.style.transform = `translateY(${offset}px)`;
     row.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `var(--column-width-${i})`).join(" ");
     row.innerHTML = this._columnHeaders.map(h => "<div></div>").join("");
     row.addEventListener("contextmenu", event => {
       const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
       const row = this.rows.find(row => row.elem === rowElem);
-      if (!this.selectedItems.includes(this.displayItems[row.dataIndex])) {
-        this.onClick(event, row);
-      }
+      this.onClick(event, row);
     });
     row.addEventListener("click", event => {
       const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
@@ -385,6 +382,11 @@ export default class ZippyTable extends HTMLElement {
   }
 
   onClick(event, row) {
+    const divIndex = this.findDivColumnIndex(event.target);
+    let prop = null;
+    if (divIndex !== null) {
+      prop = this._columnProps[divIndex];
+    }
     if (row) { // TODO: log or handle this if not true? Could it ever be false?
       if (this._selectionType === "multi-row") {
         if (event.shiftKey) {
@@ -392,7 +394,7 @@ export default class ZippyTable extends HTMLElement {
           let item = null;
           this._selections.forEach(i => item = i);
           if (!item) {
-            this.toggleSelections([0]);
+            this.toggleSelections([0], {prop});
             item = this._items[0];
           }
           let start = this.displayItems.indexOf(item);
@@ -400,24 +402,43 @@ export default class ZippyTable extends HTMLElement {
           if (start > end) {
             [start, end] = [end, start];
           }
-          this.toggleSelections([start, end], !!this._itemsMeta.get(item).selected);
+          this.toggleSelections([start, end], {prop, value: !!this._itemsMeta.get(item).selected});
         }
         else if (event.ctrlKey || event.metaKey) {
           // toggle select
-          this.toggleSelections([row.dataIndex]);
+          this.toggleSelections([row.dataIndex], {prop});
         }
         else {
           // single select
           this.clearSelections();
-          this.toggleSelections([row.dataIndex]);
+          this.toggleSelections([row.dataIndex], {prop});
         }
       }
       else {
         // reset and select
         this.clearSelections();
-        this.toggleSelections([row.dataIndex]);
+        this.toggleSelections([row.dataIndex], {prop});
       }
-      this.dispatchEvent(new CustomEvent("selectionChanged", {detail: {selectedItems: this.selectedItems, selectedItem: this.selectedItem}}));
+      this.dispatchEvent(new CustomEvent("selectionChanged", {
+        detail: {
+          selectedItems: this.selectedItems,
+          selectedItem: this.selectedItem,
+          selectedCell: this.selectedCell,
+        },
+      }));
+    }
+  }
+
+  findDivColumnIndex(targetDiv) {
+    if (!targetDiv.parentElement) {
+      return null;
+    }
+    const parent = targetDiv.parentElement;
+    if (parent.className === "row") {
+      return Array.from(parent.children).indexOf(targetDiv);
+    }
+    else {
+      return this.findDivColumnIndex(parent);
     }
   }
 
@@ -534,12 +555,15 @@ export default class ZippyTable extends HTMLElement {
     this._selections.forEach(item => {
       const dataIndex = this._items.indexOf(item);
       this._itemsMeta.get(this._items[dataIndex]).selected = false;
+      this._itemsMeta.get(this._items[dataIndex]).selectedProp = null;
     });
 
     this._selections.clear();
   }
 
-  toggleSelections([start, end], value = null) {
+  toggleSelections([start, end], {value = null, prop = null} = {}) {
+    // TODO: for Cell selection, adjust selectedProp to be an Array,
+    //       and add logic for toggling individual values.
     end = end ? end : start;
     for (let dataIndex = start; dataIndex <= end; dataIndex++) {
       const item = this.displayItems[dataIndex];
@@ -548,6 +572,7 @@ export default class ZippyTable extends HTMLElement {
       if (value === null) {
         if (itemMeta.selected) {
           itemMeta.selected = false;
+          itemMeta.selectedProp = null;
           this._selections.delete(this.displayItems[dataIndex]);
           if (row) {
             row.elem.style.backgroundColor = "";
@@ -555,6 +580,7 @@ export default class ZippyTable extends HTMLElement {
         }
         else {
           itemMeta.selected = true;
+          itemMeta.selectedProp = prop;
           this._selections.add(this.displayItems[dataIndex]);
           if (row) {
             row.elem.style.backgroundColor = "var(--zippy-table-highlight-color, var(--highlight-color))";
@@ -563,6 +589,7 @@ export default class ZippyTable extends HTMLElement {
       }
       else if (value) {
           itemMeta.selected = true;
+          itemMeta.selectedProp = prop;
           this._selections.add(this.displayItems[dataIndex]);
           if (row) {
             row.elem.style.backgroundColor = "var(--zippy-table-highlight-color, var(--highlight-color))";
@@ -570,6 +597,7 @@ export default class ZippyTable extends HTMLElement {
       }
       else {
           itemMeta.selected = false;
+          itemMeta.selectedProp = null;
           this._selections.delete(this.displayItems[dataIndex]);
           if (row) {
             row.elem.style.backgroundColor = "";
@@ -616,7 +644,7 @@ export default class ZippyTable extends HTMLElement {
       const displayItems = this._displayItems.filter(this._filter);
       for (const item of this.selectedItems) {
         if (!displayItems.includes(item)) {
-          this.toggleSelections([this._displayItems.indexOf(item)], false);
+          this.toggleSelections([this._displayItems.indexOf(item)], {value: false});
         }
       }
       this._displayItems = displayItems;
@@ -718,6 +746,7 @@ export default class ZippyTable extends HTMLElement {
       meta = {
         renderers: null,
         selected: false,
+        selectedProp: null,
       };
       this._itemsMeta.set(item, meta);
     }
@@ -733,6 +762,20 @@ export default class ZippyTable extends HTMLElement {
     let item = null;
     this._selections.forEach(each => item = each);
     return item;
+  }
+
+  get selectedCell() {
+    const item = this.selectedItem;
+    if (item) {
+      const itemMeta = this._itemsMeta.get(item);
+      if (itemMeta.selectedProp) {
+        return {
+          value: item[itemMeta.selectedProp],
+          prop: itemMeta.selectedProp,
+        };
+      }
+    }
+    return null;
   }
 
   get columnHeaders() {
