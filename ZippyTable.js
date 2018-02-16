@@ -423,10 +423,7 @@ export default class ZippyTable extends HTMLElement {
         detail: {
           selectedItems: this.selectedItems,
           selectedItem: this.selectedItem,
-          selectedCell: {
-            value: this.selectedItem[this._columnProps[divIndex]],
-            prop: this._columnProps[divIndex],
-          },
+          selectedCell: this.selectedCell,
         },
       }));
     }
