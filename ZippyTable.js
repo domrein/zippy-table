@@ -565,6 +565,8 @@ export default class ZippyTable extends HTMLElement {
   }
 
   toggleSelections([start, end], {value = null, prop = null} = {}) {
+    // TODO: for Cell selection, adjust selectedProp to be an Array,
+    //       and add logic for toggling individual values.
     end = end ? end : start;
     for (let dataIndex = start; dataIndex <= end; dataIndex++) {
       const item = this.displayItems[dataIndex];
@@ -766,8 +768,7 @@ export default class ZippyTable extends HTMLElement {
   }
 
   get selectedCell() {
-    let item = null;
-    this._selections.forEach(each => item = each);
+    const item = this.selectedItem;
     if (item) {
       const itemMeta = this._itemsMeta.get(item);
       if (itemMeta.selectedProp) {
