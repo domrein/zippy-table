@@ -866,8 +866,19 @@ export default class ZippyTable extends HTMLElement {
 
       this.headersElem.appendChild(elem);
     });
-    this.buildRows();
-    this.calcColumnSizes();
+
+    // process at end of frame because columnProps + columnRenderers will also be set
+    requestAnimationFrame(() => {
+      // force renderer rebuild
+      this.rows.forEach(r => this.recycleRow(r));
+      this._items.forEach((item, index) => this.buildMeta(item, {stomp: true}));
+
+      this.buildRows();
+      this.calcColumnSizes();
+      if (this._sizer) {
+        this.sizer = this._sizer;
+      }
+    });
   }
 
   get columnProps() {
@@ -1037,7 +1048,7 @@ export default class ZippyTable extends HTMLElement {
       const cell = row.children[i].firstChild;
       r.render(cell);
     });
-    const totalWidth = children.reduce((a, b) => a + b.clientWidth, 0);
+    const totalWidth = children.reduce((a, b) => a + b.firstChild.clientWidth, 0);
     this._columnHeaders.forEach((h, i) => {
       const fixedSize = meta.renderers[i].constructor.fixedSize;
       let size = fixedSize
@@ -1045,6 +1056,10 @@ export default class ZippyTable extends HTMLElement {
         : row.children[i].clientWidth / totalWidth * (this.headersElem.clientWidth - 10);
       if (size < minColumnSize) {
         size = minColumnSize;
+      }
+      const headerSize = this.shadowRoot.querySelector("#headers").children[i].firstChild.clientWidth;
+      if (size < headerSize + 15) {
+        size = headerSize + 15;
       }
       const type = fixedSize ? "explicit" : "preferred";
       this._columnSizes[h] = {size, type};
