@@ -2,6 +2,8 @@ const template = document.createElement("template");
 template.innerHTML = `
   <style>
     :host {
+      outline: none;
+
       display: grid;
       grid-template-areas: "header"
                            "body";
@@ -152,6 +154,8 @@ export default class ZippyTable extends HTMLElement {
 
   constructor() {
     super();
+
+    this.setAttribute("tabIndex", "0"); // enable keyboard input
 
     this._selectionType = "row";
 
