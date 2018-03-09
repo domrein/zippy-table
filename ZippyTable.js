@@ -401,12 +401,10 @@ export default class ZippyTable extends HTMLElement {
             this.toggleSelections([0], {prop});
             item = this._items[0];
           }
-          let start = this.displayItems.indexOf(item);
-          let end = row.dataIndex;
-          if (start > end) {
-            [start, end] = [end, start];
-          }
-          this.toggleSelections([start, end], {prop, value: !!this._itemsMeta.get(item).selected});
+          this.toggleSelections([this.displayItems.indexOf(item), row.dataIndex], {
+            prop, keyState: "shift",
+            value: !this._itemsMeta.get(row.item).selected,
+          });
         }
         else if (event.ctrlKey || event.metaKey) {
           // toggle select
@@ -414,8 +412,20 @@ export default class ZippyTable extends HTMLElement {
         }
         else {
           // single select
-          this.clearSelections();
-          this.toggleSelections([row.dataIndex], {prop});
+          if (event.type === "contextmenu" && this.selectedItems.length) {
+            const itemMeta = this._itemsMeta.get(this.displayItems[row.dataIndex]);
+            if (!itemMeta.selected) {
+              this.clearSelections();
+              this.toggleSelections([row.dataIndex], {prop});
+            }
+          }
+          else if (event.type === "contextmenu" && !this.selectedItems.length) {
+            this.toggleSelections([row.dataIndex], {prop});
+          }
+          else {
+            this.clearSelections();
+            this.toggleSelections([row.dataIndex], {prop});
+          }
         }
       }
       else {
@@ -565,11 +575,17 @@ export default class ZippyTable extends HTMLElement {
     this._selections.clear();
   }
 
-  toggleSelections([start, end], {value = null, prop = null} = {}) {
+  toggleSelections([start, end], {value = null, prop = null, keyState = null} = {}) {
     // TODO: for Cell selection, adjust selectedProp to be an Array,
     //       and add logic for toggling individual values.
     end = end ? end : start;
-    for (let dataIndex = start; dataIndex <= end; dataIndex++) {
+    // Allow us to iterate either up or down.
+    // We do this because selections must be stored in the order/direction selected.
+    for (let dataIndex = start; start > end ? dataIndex !== end - 1 : dataIndex !== end + 1; start > end ? dataIndex-- : dataIndex++) {
+      // don't deselect last item durign a shift-deselect.
+      if (dataIndex === end && keyState === "shift" && value === false) {
+        continue;
+      }
       const item = this.displayItems[dataIndex];
       const row = this.rows.find(row => row.dataIndex === dataIndex);
       const itemMeta = this._itemsMeta.get(item);
