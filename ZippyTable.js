@@ -366,11 +366,12 @@ export default class ZippyTable extends HTMLElement {
     row.className = "row";
     row.style.transform = `translateY(${offset}px)`;
     row.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `var(--column-width-${i})`).join(" ");
-    row.innerHTML = this._columnHeaders.map((h, i) =>
-      i === this._columnHeaders.length - 1
-        ? "<div></div>"
-        : "<div style=\"box-shadow: var(--zippy-table-background-color, var(--background-color)) -3px 0px inset;\"></div>"
-      ).join("");
+    row.innerHTML = this._columnHeaders.map((h, i) => {
+      if (i === this._columnHeaders.length - 1) {
+        return "<div></div>";
+      }
+      return "<div style=\"box-shadow: var(--zippy-table-background-color, var(--background-color)) -3px 0px inset;\"></div>";
+    }).join("");
     row.addEventListener("contextmenu", event => {
       const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
       const row = this.rows.find(row => row.elem === rowElem);
