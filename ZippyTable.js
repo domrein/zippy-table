@@ -43,6 +43,7 @@ template.innerHTML = `
     #headers > div {
       overflow: hidden;
       text-overflow: ellipsis;
+      padding-left: 5px;
       height: 100%;
     }
 
@@ -87,6 +88,7 @@ template.innerHTML = `
       display: flex;
       align-items: center;
       height: 100%;
+      padding-left: 5px;
     }
   </style>
   <div id="headers">
@@ -143,6 +145,7 @@ export default class ZippyTable extends HTMLElement {
       "column-headers",
       "column-props",
       "column-renderers",
+      "column-separator-width",
       "preload",
       "row-height",
       "hide-header",
@@ -165,6 +168,7 @@ export default class ZippyTable extends HTMLElement {
     this._columnHeaders = [];
     this._columnProps = [];
     this._columnRenderers = [];
+    this._columnSeparatorWidth = 4;
     this._preload = true;
     this._rowHeight = 32;
     this._disableScrollTopMod = false;
@@ -309,6 +313,12 @@ export default class ZippyTable extends HTMLElement {
           this.columnRenderers = newVal.split(",");
         }
         break;
+      case "column-separator-width":
+        newVal = parseInt(newVal);
+        if (this._columnSeparatorWidth !== newVal) {
+          this.columnSeparatorWidth = newVal;
+        }
+        break;
       case "preload":
         newVal = `${newVal}`.toLowerCase() == "true";
         if (this._preload !== newVal) {
@@ -370,7 +380,7 @@ export default class ZippyTable extends HTMLElement {
       if (i === this._columnHeaders.length - 1) {
         return "<div></div>";
       }
-      return "<div style=\"box-shadow: var(--zippy-table-background-color, var(--background-color)) -3px 0px inset;\"></div>";
+      return `<div style="box-shadow: var(--zippy-table-background-color, var(--background-color)) -${this._columnSeparatorWidth}px 0px inset;"></div>`;
     }).join("");
     row.addEventListener("contextmenu", event => {
       const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
@@ -863,11 +873,10 @@ export default class ZippyTable extends HTMLElement {
       if (i !== this._columnHeaders.length - 1) {
         const resizeHandle = document.createElement("div");
         resizeHandle.style.cursor = "col-resize";
-        resizeHandle.style.width = "4px";
+        resizeHandle.style.width = `${this._columnSeparatorWidth}px`;
         resizeHandle.style.backgroundColor = "var(--zippy-table-background-color, var(--background-color))";
         resizeHandle.style.height = "100%";
         resizeHandle.style.justifySelf = "flex-end";
-        resizeHandle.style.marginRight = "5px";
         const onResize = event => {
           event.preventDefault();
           event.stopPropagation();
@@ -937,6 +946,15 @@ export default class ZippyTable extends HTMLElement {
 
     this.rows.forEach(r => r.renderers = null);
     this.setAttribute("column-renderers", this._columnRenderers.join(","));
+  }
+
+  get columnSeparatorWidth() {
+    return this._columnSeparatorWidth;
+  }
+
+  set columnSeparatorWidth(val) {
+    this._columnSeparatorWidth = val;
+    this.refresh();
   }
 
   get preload() {
