@@ -84,6 +84,9 @@ template.innerHTML = `
     /* row cells */
     #rows > div > div {
       overflow: hidden; /* changes performance profile, seems more overall gpu, but smoother */
+      display: flex;
+      align-items: center;
+      height: 100%;
     }
   </style>
   <div id="headers">
@@ -363,7 +366,7 @@ export default class ZippyTable extends HTMLElement {
     row.className = "row";
     row.style.transform = `translateY(${offset}px)`;
     row.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `var(--column-width-${i})`).join(" ");
-    row.innerHTML = this._columnHeaders.map(h => "<div></div>").join("");
+    row.innerHTML = this._columnHeaders.map(h => "<div style=\"box-shadow: var(--zippy-table-background-color, var(--background-color)) -3px 0px inset;\"></div>").join("");
     row.addEventListener("contextmenu", event => {
       const rowElem = this.findElementByParent(event.target, this.shadowRoot.getElementById("rows"));
       const row = this.rows.find(row => row.elem === rowElem);
