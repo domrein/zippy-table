@@ -5,9 +5,8 @@ template.innerHTML = `
       outline: none;
 
       display: grid;
-      grid-template-areas: "header"
-                           "body";
-      grid-template-rows: 32px 1fr;
+      grid-template-areas: "body";
+      grid-template-rows: 1fr;
       background-color: var(--zippy-table-background-color, var(--background-color));
       grid-gap: 2px;
       color: var(--zippy-table-text-color, var(--text-color));
@@ -31,17 +30,18 @@ template.innerHTML = `
 
     #headers {
       background-color: var(--zippy-table-zebra-even, var(--zebra-even));
+      position: sticky;
+      height: 32px;
+      z-index: 1;
+      top: 0px;
       align-items: center;
       display: grid;
       overflow: hidden;
-      padding-left: 5px;
-      padding-right: 5px;
-      height: 100%;
-      grid-area: header;
     }
 
     #headers > div {
       overflow: hidden;
+      position: relative;
       text-overflow: ellipsis;
       padding-left: 5px;
       height: 100%;
@@ -59,8 +59,6 @@ template.innerHTML = `
 
     /* rows  */
     #rows > div {
-      padding-left: 5px;
-      padding-right: 5px;
       grid-area: grid;
       display: grid;
       grid-template-rows: 1fr;
@@ -91,9 +89,9 @@ template.innerHTML = `
       padding-left: 5px;
     }
   </style>
-  <div id="headers">
-  </div>
   <div id="body">
+    <div id="headers">
+    </div>
     <div id="rows"></div>
   </div>
 `;
@@ -739,7 +737,7 @@ export default class ZippyTable extends HTMLElement {
       const header = this._columnHeaders[i];
       if (!this._columnSizes[header]) {
         const elem = this.headersElem.children[i];
-        this._columnSizes[header] = {size: elem.clientWidth, type: "preferred"};
+        this._columnSizes[header] = {size: elem.clientWidth, defaultSize: elem.clientWidth, type: "preferred"};
       }
       if (header === column) {
         this._columnSizes[header].type = "explicit";
@@ -752,14 +750,35 @@ export default class ZippyTable extends HTMLElement {
   }
 
   calcColumnSizes() {
-    const numExplicitSizes = this._columnHeaders.filter(h => this._columnSizes.hasOwnProperty(h)).length;
+
+    let numExplicitSizes = 0;
     // add up all explicit widths
-    const explicitSizes = this._columnHeaders
-      .map(h => this._columnSizes[h] ? this._columnSizes[h].size : 0)
-      .reduce((a, b) => a + b, 0);
-    // -10 to compensate for padding on headers/rows
-    // TODO: make padding size into var
-    const availableSize = this.headersElem.clientWidth - 10;
+    const explicitSize = this._columnHeaders.filter(h => this._columnSizes[h] && this._columnSizes[h].type === "explicit")
+      .map(h => {
+        numExplicitSizes++ ;
+        return this._columnSizes[h] ? this._columnSizes[h].size : 0;
+      }).reduce((a, b) => a + b, 0);
+
+
+    const nonFixedColumns = this._columnHeaders.filter(h => {
+      return !this._columnSizes[h] || this._columnSizes[h].type === "preferred";
+    });
+    // Get the smallest size the table can be to fit everything
+    const minSize = nonFixedColumns.reduce((weight, h) => {
+      const columnWeight = this._columnSizes[h] ? this._columnSizes[h].defaultSize : minColumnSize;
+      return weight + columnWeight;
+    }, explicitSize);
+    const tableWidth = Math.max(this.bodyElem.clientWidth, minSize);
+    this.headersElem.style.width = `${tableWidth}px`;
+    this.rowsElem.style.width = `${tableWidth}px`;
+
+    const availableSize = this.headersElem.clientWidth - explicitSize;
+
+    const totalWeight = nonFixedColumns.reduce((weight, h) => {
+      const columnWeight = this._columnSizes[h] ? this._columnSizes[h].size : 1 / this._columnHeaders.length * availableSize;
+      return weight + columnWeight;
+    }, 0);
+
     this._columnHeaders.forEach((h, i) => {
       // set explicit widths in pixels
       if (this._columnSizes[h] && this._columnSizes[h].type === "explicit") {
@@ -767,13 +786,13 @@ export default class ZippyTable extends HTMLElement {
       }
       // set preferred widths in percentages calculated from pixels
       else if (this._columnSizes[h] && this._columnSizes[h].type === "preferred") {
-        this.shadowRoot.host.style.setProperty(`--column-width-${i}`, `${this._columnSizes[h].size / availableSize * 100}%`);
+        this._columnSizes[h].size = this._columnSizes[h].size / totalWeight * availableSize;
+        this.shadowRoot.host.style.setProperty(`--column-width-${i}`, `${this._columnSizes[h].size}px`);
       }
       // share available space by default
       else {
-        const availableToMe = availableSize - explicitSizes;
-        const myShare = availableToMe / (this._columnHeaders.length - numExplicitSizes);
-        this.shadowRoot.host.style.setProperty(`--column-width-${i}`, `${myShare / availableSize * 100}%`);
+        const myShare = (1 / this._columnHeaders.length - numExplicitSizes) * availableSize;
+        this.shadowRoot.host.style.setProperty(`--column-width-${i}`, `${myShare}px`);
       }
     });
   }
@@ -824,7 +843,7 @@ export default class ZippyTable extends HTMLElement {
     this._columnHeaders = val;
     this.setAttribute("column-headers", this._columnHeaders.join(","));
     this.headersElem.innerHTML = "";
-    this.headersElem.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `calc(var(--column-width-${i}) - var(--scrollbar-width) / ${this._columnHeaders.length})`).join(" ");
+    this.headersElem.style.gridTemplateColumns = this._columnHeaders.map((h, i) => `var(--column-width-${i})`).join(" ");
     this._columnHeaders.forEach((h, i) => {
       const elem = document.createElement("div");
       elem.style.display = "flex";
@@ -873,10 +892,12 @@ export default class ZippyTable extends HTMLElement {
       if (i !== this._columnHeaders.length - 1) {
         const resizeHandle = document.createElement("div");
         resizeHandle.style.cursor = "col-resize";
-        resizeHandle.style.width = `${this._columnSeparatorWidth}px`;
+        resizeHandle.style.minWidth = `${this._columnSeparatorWidth}px`;
         resizeHandle.style.backgroundColor = "var(--zippy-table-background-color, var(--background-color))";
         resizeHandle.style.height = "100%";
-        resizeHandle.style.justifySelf = "flex-end";
+        resizeHandle.style.zIndex = "1";
+        resizeHandle.style.position = "absolute";
+        resizeHandle.style.right = "0px";
         const onResize = event => {
           event.preventDefault();
           event.stopPropagation();
@@ -886,7 +907,6 @@ export default class ZippyTable extends HTMLElement {
 
           // follow mouse
           const onMove = event => {
-            // console.log(event);
             this.setColumnSize(h, startWidth + event.pageX - startX);
           };
           const onUp = event => {
@@ -1108,7 +1128,7 @@ export default class ZippyTable extends HTMLElement {
         size = headerSize + 15;
       }
       const type = fixedSize ? "explicit" : "preferred";
-      this._columnSizes[h] = {size, type};
+      this._columnSizes[h] = {size, defaultSize: size, type};
     });
     this.bodyElem.removeChild(row);
     this.calcColumnSizes();
@@ -1122,6 +1142,21 @@ export default class ZippyTable extends HTMLElement {
     this.rows.forEach(r => this.recycleRow(r));
     this._filter = val;
     this.applyFilter({recycle: false});
+  }
+
+  scrollTo(item) {
+    let idx = null;
+    if (typeof item === "number") {
+      // Number is considered an _items index.
+      idx = item;
+    }
+    else if (typeof item === "object" && item !== null){
+      idx = this._items.indexOf(item);
+    }
+    else {
+      throw new TypeError();
+    }
+    this.bodyElem.scrollTop = this._rowHeight * idx;
   }
 }
 
