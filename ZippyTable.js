@@ -1159,7 +1159,7 @@ export default class ZippyTable extends HTMLElement {
     this.bodyElem.scrollTop = this._rowHeight * idx;
   }
 
-  clearSort() {
+  resetSorting() {
     this._sortBys = [];
     this.applySort();
   }
