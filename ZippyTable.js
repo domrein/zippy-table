@@ -3,6 +3,7 @@ template.innerHTML = `
   <style>
     :host {
       outline: none;
+      user-select: none;
 
       display: grid;
       grid-template-areas: "body";
@@ -90,8 +91,7 @@ template.innerHTML = `
     }
   </style>
   <div id="body">
-    <div id="headers">
-    </div>
+    <div id="headers"></div>
     <div id="rows"></div>
   </div>
 `;
