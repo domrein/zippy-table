@@ -1158,6 +1158,11 @@ export default class ZippyTable extends HTMLElement {
     }
     this.bodyElem.scrollTop = this._rowHeight * idx;
   }
+
+  clearSort() {
+    this._sortBys = [];
+    this.applySort();
+  }
 }
 
 customElements.define("zippy-table", ZippyTable);
