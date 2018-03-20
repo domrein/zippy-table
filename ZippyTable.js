@@ -24,9 +24,8 @@ template.innerHTML = `
       --row-height: 32px; /* use "row-height" attribute to set this */
     }
 
-    :host([hide-header]) {
-      grid-template-rows: 0px 1fr;
-      grid-gap: 0px;
+    #headers.hidden {
+      height: 0px; /* Leaves header in a state that has clientWidth for sizer calculations */
     }
 
     #headers {
@@ -330,6 +329,14 @@ export default class ZippyTable extends HTMLElement {
         }
         break;
       case "hide-header":
+        newVal = `${newVal}`.toLowerCase() == "true";
+        this._hideHeaders = newVal;
+        if (newVal) {
+          this.headersElem.classList.add("hidden");
+        }
+        else {
+          this.headersElem.classList.remove("hidden");
+        }
         break;
       case "disable-scroll-top-mod":
         newVal = `${newVal}`.toLowerCase() == "true";
