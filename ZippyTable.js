@@ -798,7 +798,7 @@ export default class ZippyTable extends HTMLElement {
       }
       // share available space by default
       else {
-        const myShare = (1 / this._columnHeaders.length - numExplicitSizes) * availableSize;
+        const myShare = 1 / (this._columnHeaders.length - numExplicitSizes) * availableSize;
         this.shadowRoot.host.style.setProperty(`--column-width-${i}`, `${myShare}px`);
       }
     });
