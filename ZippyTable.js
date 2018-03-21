@@ -3,7 +3,6 @@ template.innerHTML = `
   <style>
     :host {
       outline: none;
-      user-select: none;
 
       display: grid;
       grid-template-areas: "body";
